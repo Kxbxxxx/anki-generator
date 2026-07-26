@@ -1,0 +1,9 @@
+# To sa "biblioteki" - gotowe kawałki cudzego kodu, których używamy.
+# Instaluje się je jedną komendą (pokazana w README.md).
+
+anthropic        # rozmowa z Claude (to on generuje fiszki)
+PyMuPDF          # czytanie plików PDF: tekst + obrazki
+genanki          # tworzenie gotowego pliku .apkg dla Anki
+python-dotenv    # bezpieczne wczytanie klucza API z pliku .env
+python-docx      # czytanie baz pytań w formacie .docx
+streamlit        # graficzny interfejs (GUI) uruchamiany w przeglądarce

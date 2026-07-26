@@ -1,0 +1,14 @@
+# Motyw aplikacji — profesjonalny, ciemny, z fioletowym akcentem.
+[theme]
+base = "dark"
+primaryColor = "#6366f1"              # indygo (akcent, przyciski)
+backgroundColor = "#0b0e14"           # tło główne (głęboki granat)
+secondaryBackgroundColor = "#151a24"  # karty / panele
+textColor = "#e8eaed"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"               # chowa deweloperski pasek narzędzi
+
+[browser]
+gatherUsageStats = false              # bez telemetrii Streamlit

@@ -1,0 +1,25 @@
+# === BEZPIECZEŃSTWO — NIGDY nie wrzucaj tych plików na GitHub ===
+.env
+.env.*
+*.key
+secrets.toml
+.streamlit/secrets.toml
+
+# Środowisko Pythona
+venv/
+__pycache__/
+*.pyc
+
+# Pliki wynikowe / robocze
+*.apkg
+*.txt
+!requirements.txt
+!przyklady/*.txt
+
+# Runtime / stan aplikacji
+.licznik_darmowych.json
+.darmowe_emaile.json
+obrazki_tymczasowe/
+
+# System
+.DS_Store
