@@ -17,6 +17,16 @@ import tempfile
 import streamlit as st
 import streamlit.components.v1 as components
 
+# Na hostingu (Streamlit Cloud) sekrety wstrzykujemy do zmiennych środowiskowych,
+# żeby czytał je zarówno ten plik (os.getenv), jak i silnik w podprocesie.
+# Ustawiamy TYLKO gdy zmienna nie istnieje (setdefault) — lokalne env ma pierwszeństwo.
+try:
+    for _klucz_sekretu, _wartosc_sekretu in st.secrets.items():
+        if isinstance(_wartosc_sekretu, str):
+            os.environ.setdefault(_klucz_sekretu, _wartosc_sekretu)
+except Exception:
+    pass  # Brak pliku sekretów (np. lokalnie) — normalne, pomijamy.
+
 MARKA = "CardForge"
 KATALOG = os.path.dirname(os.path.abspath(__file__))
 
