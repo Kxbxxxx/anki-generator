@@ -603,23 +603,30 @@ def zrecenzuj_qa(klient, pary):
             for i, (f, _obr, _tem, _zr) in enumerate(partia)
         ]
         print(f"  Recenzja fiszek {start + 1}-{start + len(partia)}...")
-        wynik = klient.messages.parse(
-            model=MODEL,
-            max_tokens=16000,
-            system=PROMPT_RECENZENTA_QA,
-            messages=[{"role": "user", "content": "\n".join(linie)}],
-            output_format=ListaQAId,
-        )
-        dolicz_zuzycie(wynik)
-        for fo in wynik.parsed_output.fiszki:
-            if 0 <= fo.id < len(pary):
-                _, obrazek, temat, zrodlo = pary[fo.id]
-            else:
-                obrazek, temat, zrodlo = None, "Inne", ""
-            zachowane.append((
-                Fiszka(pytanie=fo.pytanie, odpowiedz=fo.odpowiedz, notatka=fo.notatka),
-                obrazek, temat, zrodlo,
-            ))
+        try:
+            wynik = klient.messages.parse(
+                model=MODEL,
+                max_tokens=16000,
+                system=PROMPT_RECENZENTA_QA,
+                messages=[{"role": "user", "content": "\n".join(linie)}],
+                output_format=ListaQAId,
+            )
+            dolicz_zuzycie(wynik)
+            for fo in wynik.parsed_output.fiszki:
+                if 0 <= fo.id < len(pary):
+                    _, obrazek, temat, zrodlo = pary[fo.id]
+                else:
+                    obrazek, temat, zrodlo = None, "Inne", ""
+                zachowane.append((
+                    Fiszka(pytanie=fo.pytanie, odpowiedz=fo.odpowiedz, notatka=fo.notatka),
+                    obrazek, temat, zrodlo,
+                ))
+        except Exception as e:
+            # Recenzja tej partii padła (np. brak kredytów) — ZACHOWUJEMY oryginalne
+            # fiszki bez recenzji, żeby NIC nie przepadło.
+            print(f"    ⚠️ Recenzja partii {start + 1}-{start + len(partia)} nie zadziałała "
+                  f"({type(e).__name__}) — zachowuję te fiszki BEZ recenzji.")
+            zachowane.extend(partia)
     return zachowane
 
 
@@ -633,22 +640,29 @@ def zrecenzuj_cloze(klient, pary):
             for i, (f, _obr, _tem, _zr) in enumerate(partia)
         ]
         print(f"  Recenzja fiszek {start + 1}-{start + len(partia)}...")
-        wynik = klient.messages.parse(
-            model=MODEL,
-            max_tokens=16000,
-            system=PROMPT_RECENZENTA_CLOZE,
-            messages=[{"role": "user", "content": "\n".join(linie)}],
-            output_format=ListaClozeId,
-        )
-        dolicz_zuzycie(wynik)
-        for fo in wynik.parsed_output.fiszki:
-            if 0 <= fo.id < len(pary):
-                _, obrazek, temat, zrodlo = pary[fo.id]
-            else:
-                obrazek, temat, zrodlo = None, "Inne", ""
-            zachowane.append(
-                (FiszkaCloze(tekst=fo.tekst, notatka=fo.notatka), obrazek, temat, zrodlo)
+        try:
+            wynik = klient.messages.parse(
+                model=MODEL,
+                max_tokens=16000,
+                system=PROMPT_RECENZENTA_CLOZE,
+                messages=[{"role": "user", "content": "\n".join(linie)}],
+                output_format=ListaClozeId,
             )
+            dolicz_zuzycie(wynik)
+            for fo in wynik.parsed_output.fiszki:
+                if 0 <= fo.id < len(pary):
+                    _, obrazek, temat, zrodlo = pary[fo.id]
+                else:
+                    obrazek, temat, zrodlo = None, "Inne", ""
+                zachowane.append(
+                    (FiszkaCloze(tekst=fo.tekst, notatka=fo.notatka), obrazek, temat, zrodlo)
+                )
+        except Exception as e:
+            # Recenzja tej partii padła (np. brak kredytów) — ZACHOWUJEMY oryginalne
+            # fiszki bez recenzji, żeby NIC nie przepadło.
+            print(f"    ⚠️ Recenzja partii {start + 1}-{start + len(partia)} nie zadziałała "
+                  f"({type(e).__name__}) — zachowuję te fiszki BEZ recenzji.")
+            zachowane.extend(partia)
     return zachowane
 
 
