@@ -217,11 +217,12 @@ TEKSTY = {
 }
 
 st.set_page_config(page_title=MARKA, page_icon="⚡", layout="centered",
-                   initial_sidebar_state="expanded")
+                   initial_sidebar_state="collapsed" if TRYB_PRODUKCJI else "expanded")
 
-# Wybór języka (na górze panelu bocznego) — steruje całym UI.
-jezyk = st.sidebar.radio("Język / Language", ["Polski", "English"],
-                         horizontal=True, label_visibility="collapsed")
+# Wybór języka INTERFEJSU — WIDOCZNY na górze strony (nie chowa się w panelu bocznym).
+_kol_puste, _kol_jezyk = st.columns([3, 1])
+jezyk = _kol_jezyk.selectbox("Język / Language", ["Polski", "English"],
+                             label_visibility="collapsed")
 L = "en" if jezyk == "English" else "pl"
 t = TEKSTY[L]
 
@@ -267,36 +268,24 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
-# --- PANEL BOCZNY ----------------------------------------------------------
+# --- USTAWIENIA ------------------------------------------------------------
+# Wszystko WIDOCZNE dla użytkownika na głównej stronie (język, tryb, jakość).
+# Ukryty jest TYLKO klucz API — w produkcji siedzi bezpiecznie na serwerze.
 JEZYKI_FISZEK = {
     t["lang_auto"]: "auto", "Polski": "polski", "English": "English",
     "Deutsch": "Deutsch", "Español": "Español", "Français": "Français",
     "Italiano": "Italiano", "Українська": "Ukrainian",
 }
-with st.sidebar:
-    st.markdown(f"### ⚡ {MARKA}")
-    st.caption(t["settings"])
-    if TRYB_PRODUKCJI:
-        # Produkcja: klucz i model są schowane na serwerze — user ich nie widzi.
-        klucz = ""
-        MODEL = "claude-sonnet-5"
-        TRYB = os.getenv("ANKI_TRYB", "ogolny")
-        jezyk_label = st.selectbox(t["lang_cards"], list(JEZYKI_FISZEK.keys()),
-                                   help=t["lang_cards_help"])
-        ANKI_JEZYK = JEZYKI_FISZEK[jezyk_label]
-        st.divider()
-        st.caption(t["prod_note"])
-    else:
+if TRYB_PRODUKCJI:
+    # Produkcja: klucz API schowany na serwerze (sekrety). Reszta widoczna niżej.
+    klucz = ""
+else:
+    # Lokalnie (dev): klucz + notka o koszcie w panelu bocznym.
+    with st.sidebar:
+        st.markdown(f"### ⚡ {MARKA}")
+        st.caption(t["settings"])
         klucz = st.text_input(t["api_key"], type="password", help=t["api_help"],
                               placeholder="sk-ant-…")
-        model_wybor = st.radio(t["model"], [t["model_cheap"], t["model_best"]],
-                               help=t["model_help"])
-        MODEL = "claude-sonnet-5" if model_wybor == t["model_cheap"] else "claude-opus-4-8"
-        tryb_wybor = st.radio(t["mode"], [t["mode_general"], t["mode_med"]], help=t["mode_help"])
-        TRYB = "medycyna" if tryb_wybor == t["mode_med"] else "ogolny"
-        jezyk_label = st.selectbox(t["lang_cards"], list(JEZYKI_FISZEK.keys()),
-                                   help=t["lang_cards_help"])
-        ANKI_JEZYK = JEZYKI_FISZEK[jezyk_label]
         st.divider()
         st.caption(t["cost_note"])
 
@@ -404,8 +393,21 @@ def email_ok(email):
 # --- FORMULARZ -------------------------------------------------------------
 plik = st.file_uploader("upload", type=["pdf", "docx"], label_visibility="collapsed")
 st.markdown(f'<div class="panel-hint">{t["upload_hint"]}</div>', unsafe_allow_html=True)
+if TRYB_PRODUKCJI:
+    st.info(t["prod_note"])
 
 przedmiot = st.text_input(t["subject"], placeholder=t["subject_ph"])
+
+# USTAWIENIA WIDOCZNE dla użytkownika: język fiszek, tryb treści, jakość.
+_c1, _c2 = st.columns(2)
+jezyk_label = _c1.selectbox(t["lang_cards"], list(JEZYKI_FISZEK.keys()),
+                            help=t["lang_cards_help"])
+ANKI_JEZYK = JEZYKI_FISZEK[jezyk_label]
+tryb_wybor = _c2.selectbox(t["mode"], [t["mode_general"], t["mode_med"]], help=t["mode_help"])
+TRYB = "medycyna" if tryb_wybor == t["mode_med"] else "ogolny"
+model_wybor = st.radio(t["model"], [t["model_cheap"], t["model_best"]],
+                       help=t["model_help"], horizontal=True)
+MODEL = "claude-sonnet-5" if model_wybor == t["model_cheap"] else "claude-opus-4-8"
 
 opt_recenzja = st.checkbox(t["recenzja"], value=True, help=t["recenzja_help"])
 
@@ -628,8 +630,12 @@ if generuj:
     with open(sciezka_pliku, "wb") as f:
         f.write(plik.getbuffer())
 
+    # Darmowa próbka w produkcji → wymuszamy Standard (tańszy dla Ciebie),
+    # nawet gdyby ktoś wybrał Pro. Płatne dokumenty respektują wybór (cena rośnie).
+    model_efektywny = "claude-sonnet-5" if (TRYB_PRODUKCJI and szac and darmowy) else MODEL
+
     env = os.environ.copy()
-    env["ANKI_MODEL"] = MODEL
+    env["ANKI_MODEL"] = model_efektywny
     env["ANKI_TRYB"] = TRYB
     env["ANKI_JEZYK"] = ANKI_JEZYK
     if klucz:
