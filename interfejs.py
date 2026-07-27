@@ -47,6 +47,7 @@ DARMOWE_NA_SESJE = 2      # ile darmowych próbek na jedną sesję przeglądarki
 LIMIT_DARMOWYCH_DZIENNIE = 15   # globalny limit darmowych próbek na dobę (wszyscy razem)
 LICZNIK_PLIK = os.path.join(KATALOG, ".licznik_darmowych.json")
 EMAILE_PLIK = os.path.join(KATALOG, ".darmowe_emaile.json")   # e-maile, które użyły darmowej próbki
+UZYTE_KODY_PLIK = os.path.join(KATALOG, ".uzyte_kody.json")   # license keys już wykorzystane (jednorazowość)
 
 # --- TŁUMACZENIA INTERFEJSU ------------------------------------------------
 TEKSTY = {
@@ -322,13 +323,74 @@ def oblicz_cene(koszt_usd):
     return max(CENA_MIN_PLN, round(cena))
 
 
+def _uzyte_kody():
+    """Zbiór license keys już wykorzystanych (jeden kod = jeden dokument)."""
+    import json
+    try:
+        return set(json.load(open(UZYTE_KODY_PLIK, encoding="utf-8")))
+    except Exception:
+        return set()
+
+
+def zapisz_uzyty_kod(kod):
+    """Oznacza license key jako wykorzystany (na zawsze)."""
+    import json
+    uzyte = _uzyte_kody()
+    uzyte.add((kod or "").strip())
+    try:
+        json.dump(sorted(uzyte), open(UZYTE_KODY_PLIK, "w", encoding="utf-8"))
+    except Exception:
+        pass
+
+
+def _kod_zweryfikowany(kod):
+    """True, jeśli kod to ważny kod testowy (CARDFORGE_KODY) LUB ważny license key z Gumroada."""
+    # Kody testowe (dla właściciela) — lista po przecinku w sekrecie CARDFORGE_KODY.
+    wazne = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
+    if kod in wazne:
+        return True
+    # Weryfikacja license key przez API Gumroada (product_id z sekretu).
+    product_id = os.getenv("GUMROAD_PRODUCT_ID", "").strip()
+    if not product_id:
+        return False
+    try:
+        import json
+        import urllib.request
+        import urllib.parse
+        dane = urllib.parse.urlencode({
+            "product_id": product_id,
+            "license_key": kod,
+            "increment_uses_count": "false",   # nie zużywamy — jednorazowość pilnujemy sami
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.gumroad.com/v2/licenses/verify", data=dane)
+        with urllib.request.urlopen(req, timeout=10) as odp:
+            wynik = json.load(odp)
+        if not wynik.get("success"):
+            return False
+        zakup = wynik.get("purchase", {}) or {}
+        if zakup.get("refunded") or zakup.get("chargebacked") or zakup.get("disputed"):
+            return False   # zwrot/reklamacja → kod nieważny
+        return True
+    except Exception:
+        return False   # brak weryfikacji (błąd/nieznany kod) = NIE odblokowujemy (bezpiecznie)
+
+
 def kod_wazny(kod):
-    """Sprawdza kod dostępu z listy CARDFORGE_KODY (rozdzielone przecinkami)."""
+    """Czy kod odblokowuje płatny dokument. License key jest JEDNORAZOWY (raz użyty = nieważny).
+    Sprawdza kody testowe (CARDFORGE_KODY) oraz prawdziwe license keys z Gumroada."""
     kod = (kod or "").strip()
     if not kod:
         return False
-    wazne = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
-    return kod in wazne
+    if kod in _uzyte_kody():                 # już wykorzystany — jednorazowość
+        return False
+    cache = st.session_state.setdefault("_ok_kody", set())
+    if kod in cache:                         # zweryfikowany w tej sesji → nie wołaj API znów
+        return True
+    if _kod_zweryfikowany(kod):
+        cache.add(kod)
+        return True
+    return False
 
 
 def _licznik_dzis():
@@ -424,6 +486,7 @@ darmowy = True
 cena_pln = 0
 odblokowane = True   # lokalnie zawsze odblokowane; w produkcji zależy od kodu
 email_darmo = ""     # e-mail do odebrania darmowej próbki (tylko produkcja)
+kod = ""             # license key / kod dostępu (płatny dokument, tylko produkcja)
 
 if plik is not None and not opt_demo:
     szac = szacuj_koszt(plik, MODEL, opt_recenzja)
@@ -667,6 +730,13 @@ if generuj:
         st.session_state["darmowe_uzyte"] = st.session_state.get("darmowe_uzyte", 0) + 1
         dolicz_darmowe()
         zapisz_email_darmo((email_darmo or "").strip().lower())
+
+    # Udany PŁATNY dokument → oznacz license key jako wykorzystany (jednorazowość).
+    # Kody testowe (CARDFORGE_KODY) NIE są zużywane — zostają wielorazowe dla właściciela.
+    if TRYB_PRODUKCJI and szac and not darmowy and kod.strip():
+        _testowe = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
+        if kod.strip() not in _testowe:
+            zapisz_uzyty_kod(kod)
 
     pliki_wynikowe = []
     for l in linie:

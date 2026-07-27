@@ -19,6 +19,7 @@ __pycache__/
 # Runtime / stan aplikacji
 .licznik_darmowych.json
 .darmowe_emaile.json
+.uzyte_kody.json
 obrazki_tymczasowe/
 
 # System
