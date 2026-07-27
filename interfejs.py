@@ -37,11 +37,7 @@ KATALOG = os.path.dirname(os.path.abspath(__file__))
 TRYB_PRODUKCJI = os.getenv("CARDFORGE_PROD", "0") == "1"
 KURS_USD_PLN = 4.0        # przelicznik USD→PLN tylko do wyświetlania ceny
 MARZA = 3.0               # cena = koszt_API × MARZA  (Twój zysk = różnica)
-CENA_MIN_PLN = 5          # minimalna cena płatnego dokumentu (zł)
-try:
-    CENA_STALA = int(os.getenv("CARDFORGE_CENA", "19"))   # cena płatnego dokumentu = cena na Gumroad
-except ValueError:
-    CENA_STALA = 19
+CENA_MIN_PLN = 5          # minimalna cena płatnego dokumentu (zł) = minimum PWYW na Gumroad
 DARMOWE_JEDNOSTKI = 5     # dokument ≤ tyle stron/części = ZA DARMO (próbka)
 LINK_PLATNOSCI = os.getenv("CARDFORGE_LINK", "")   # link do płatności (np. Gumroad)
 
@@ -498,8 +494,8 @@ if plik is not None and not opt_demo:
 if szac:
     jednostki, koszt_usd = szac
     darmowy = jednostki <= DARMOWE_JEDNOSTKI
-    # W produkcji cena = stała cena z Gumroada (spójność). Lokalnie: szacunek wg rozmiaru.
-    cena_pln = CENA_STALA if TRYB_PRODUKCJI else oblicz_cene(koszt_usd)
+    # Cena zależna od ROZMIARU i MODELU (szacuj_koszt liczy oba) × marża.
+    cena_pln = oblicz_cene(koszt_usd)
     if not TRYB_PRODUKCJI:
         # Tryb lokalny/deweloperski: pokaż tylko szacowany koszt API (jak dotąd).
         st.caption(t["estimate"].format(n=jednostki, c=f"{koszt_usd:.2f}"))
@@ -510,7 +506,10 @@ if szac:
     else:
         st.warning(t["price_paid"].format(n=jednostki, cena=cena_pln))
         if LINK_PLATNOSCI:
-            st.link_button(t["pay_button"].format(cena=cena_pln), LINK_PLATNOSCI,
+            # Doklejamy wyliczoną cenę do linku — Gumroad (PWYW) podpowie tę kwotę.
+            sep = "&" if "?" in LINK_PLATNOSCI else "?"
+            link_z_cena = f"{LINK_PLATNOSCI}{sep}price={cena_pln}"
+            st.link_button(t["pay_button"].format(cena=cena_pln), link_z_cena,
                            use_container_width=True)
         kod = st.text_input(t["code_label"], help=t["code_help"])
         odblokowane = kod_wazny(kod)
