@@ -43,6 +43,7 @@ DARMOWE_JEDNOSTKI = 5     # dokument ≤ tyle stron/części = ZA DARMO (próbka
 LINK_PLATNOSCI = os.getenv("CARDFORGE_LINK", "")   # link do płatności za 1 dokument (Gumroad)
 LINK_SUB = os.getenv("CARDFORGE_SUB_LINK", "")     # link do subskrypcji (Gumroad membership)
 SUB_LIMIT_MIES = 20      # abonament: fair-use — ile dokumentów na miesiąc
+SUB_MAX_JEDNOSTKI = 60   # abonament pokrywa dokumenty do tylu stron/części (większe = podziel)
 try:
     SUB_CENA = int(os.getenv("CARDFORGE_SUB_CENA", "49"))   # cena abonamentu/mies. (do wyświetlenia)
 except ValueError:
@@ -157,6 +158,8 @@ TEKSTY = {
         "sub_buy": "💎 Wykup abonament — {cena} zł/mies. (do {limit} dokumentów)",
         "sub_generate_note": "💎 Abonament aktywny — generujesz w ramach abonamentu "
                              "(bez dodatkowej opłaty).",
+        "sub_too_large": "💎 Abonament pokrywa dokumenty do **{maks}** stron. Ten ma **{n}** — "
+                         "podziel go („Zakres stron” w Opcjach zaawansowanych) albo kup osobno.",
         "footer": f"{MARKA} · fiszki Anki z każdego dokumentu",
     },
     "en": {
@@ -257,6 +260,8 @@ TEKSTY = {
         "sub_buy": "💎 Subscribe — {cena} zł/month (up to {limit} documents)",
         "sub_generate_note": "💎 Subscription active — generating within your plan "
                              "(no extra charge).",
+        "sub_too_large": "💎 Your plan covers documents up to **{maks}** pages. This one has "
+                         "**{n}** — split it (“Page range” in advanced) or buy it separately.",
         "footer": f"{MARKA} · Anki flashcards from any document",
     },
 }
@@ -620,7 +625,10 @@ if szac:
     if TRYB_PRODUKCJI and jednostki > PROG_OSTRZEZENIA:
         st.warning(t["too_large_warn"].format(n=jednostki))
     if subskrybent:
-        st.success(t["sub_generate_note"])
+        if jednostki > SUB_MAX_JEDNOSTKI:
+            st.warning(t["sub_too_large"].format(n=jednostki, maks=SUB_MAX_JEDNOSTKI))
+        else:
+            st.success(t["sub_generate_note"])
     elif not TRYB_PRODUKCJI:
         # Tryb lokalny/deweloperski: pokaż tylko szacowany koszt API (jak dotąd).
         st.caption(t["estimate"].format(n=jednostki, c=f"{koszt_usd:.2f}"))
@@ -795,6 +803,9 @@ if generuj:
     # OCHRONA 1 — limit rozmiaru: żaden pojedynczy dokument nie spali fortuny.
     if szac and szac[0] > MAX_JEDNOSTKI:
         st.error(t["too_big"].format(n=szac[0], maks=MAX_JEDNOSTKI)); st.stop()
+    # OCHRONA 1b — abonament pokrywa tylko dokumenty do SUB_MAX_JEDNOSTKI stron.
+    if TRYB_PRODUKCJI and subskrybent and szac and szac[0] > SUB_MAX_JEDNOSTKI:
+        st.error(t["sub_too_large"].format(n=szac[0], maks=SUB_MAX_JEDNOSTKI)); st.stop()
     # OCHRONA 2 — bramka płatności (produkcja): płatny dokument wymaga kodu.
     # Abonent (subskrybent) omija — generuje w ramach abonamentu.
     if TRYB_PRODUKCJI and szac and not darmowy and not odblokowane and not subskrybent:
