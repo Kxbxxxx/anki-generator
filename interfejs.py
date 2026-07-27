@@ -40,7 +40,9 @@ MARZA = 2.5               # cena = koszt_API × MARZA (~15 zł za rozdział ~30 
 PROG_OSTRZEZENIA = 60     # powyżej tylu stron/części pokazujemy ostrzeżenie „duży plik = drożej”
 CENA_MIN_PLN = 5          # minimalna cena płatnego dokumentu (zł) = minimum PWYW na Gumroad
 DARMOWE_JEDNOSTKI = 5     # dokument ≤ tyle stron/części = ZA DARMO (próbka)
-LINK_PLATNOSCI = os.getenv("CARDFORGE_LINK", "")   # link do płatności (np. Gumroad)
+LINK_PLATNOSCI = os.getenv("CARDFORGE_LINK", "")   # link do płatności za 1 dokument (Gumroad)
+LINK_SUB = os.getenv("CARDFORGE_SUB_LINK", "")     # link do subskrypcji (Gumroad membership)
+SUB_LIMIT_MIES = 20      # abonament: fair-use — ile dokumentów na miesiąc
 
 # --- ZABEZPIECZENIA (ochrona przed spalaniem Twojego API) ------------------
 MAX_JEDNOSTKI = 400       # twardy limit rozmiaru 1 dokumentu (chroni przed gigantem)
@@ -49,14 +51,18 @@ LIMIT_DARMOWYCH_DZIENNIE = 15   # globalny limit darmowych próbek na dobę (wsz
 LICZNIK_PLIK = os.path.join(KATALOG, ".licznik_darmowych.json")
 EMAILE_PLIK = os.path.join(KATALOG, ".darmowe_emaile.json")   # e-maile, które użyły darmowej próbki
 UZYTE_KODY_PLIK = os.path.join(KATALOG, ".uzyte_kody.json")   # license keys już wykorzystane (jednorazowość)
+ABONENCI_PLIK = os.path.join(KATALOG, ".abonenci_zuzycie.json")   # zużycie abonentów (fair-use/miesiąc)
 
 # --- TŁUMACZENIA INTERFEJSU ------------------------------------------------
 TEKSTY = {
     "pl": {
-        "title": f"{MARKA} — fiszki Anki z każdego dokumentu",
-        "slogan": "Zamień każdy dokument w gotowe fiszki Anki — w kilka sekund.",
-        "chips": ["📄 PDF i Word", "🗂️ Auto-podział na tematy",
-                  "🎨 Styl AnKing", "🧠 Zweryfikowane odpowiedzi"],
+        "title": f"{MARKA} — fiszki z Twojego skryptu i bazy pytań",
+        "slogan": "Twój skrypt i baza pytań → gotowe fiszki Anki. "
+                  "To, czego nie ma w gotowych deckach.",
+        "trust_line": "🩺 Zrobione przez studenta medycyny — na materiał, którego "
+                      "AnKing i inne decki nie mają (Twoje skrypty, wykłady, bazy pytań).",
+        "chips": ["📚 Z Twojego skryptu", "📝 Baza pytań → fiszki",
+                  "🎨 Styl AnKing", "🩺 Od studenta medycyny"],
         "settings": "Ustawienia",
         "language": "Język / Language",
         "api_key": "Klucz API",
@@ -76,7 +82,8 @@ TEKSTY = {
         "lang_auto": "Auto (jak dokument)",
         "cost_note": "💡 Generowanie płatne jest z Twojego klucza (od zużycia). "
                      "Tryb demo jest darmowy.",
-        "upload_hint": "Przeciągnij PDF (skrypt, prezentacja) lub .docx (baza pytań). "
+        "upload_hint": "Wgraj swój skrypt/wykład (PDF) albo bazę pytań (.docx) — "
+                       "materiał, którego nie znajdziesz w gotowych deckach. "
                        "Program sam wykryje strukturę i tematy.",
         "subject": "Nazwa przedmiotu (talia)",
         "subject_ph": "np. Mikrobiologia",
@@ -138,10 +145,13 @@ TEKSTY = {
         "footer": f"{MARKA} · fiszki Anki z każdego dokumentu",
     },
     "en": {
-        "title": f"{MARKA} — Anki flashcards from any document",
-        "slogan": "Turn any document into ready-to-study Anki flashcards — in seconds.",
-        "chips": ["📄 PDF & Word", "🗂️ Auto topic split",
-                  "🎨 AnKing style", "🧠 Verified answers"],
+        "title": f"{MARKA} — flashcards from your notes & question banks",
+        "slogan": "Your lecture notes and question banks → ready Anki flashcards. "
+                  "The stuff that isn't in premade decks.",
+        "trust_line": "🩺 Built by a med student — for material AnKing and other decks "
+                      "don't cover (your notes, lectures, question banks).",
+        "chips": ["📚 From your notes", "📝 Question bank → cards",
+                  "🎨 AnKing style", "🩺 By a med student"],
         "settings": "Settings",
         "language": "Language / Język",
         "api_key": "API key",
@@ -161,7 +171,8 @@ TEKSTY = {
         "lang_auto": "Auto (match document)",
         "cost_note": "💡 Generation is billed from your key (pay per use). "
                      "Demo mode is free.",
-        "upload_hint": "Drop a PDF (textbook, slides) or .docx (question bank). "
+        "upload_hint": "Upload your notes/lecture (PDF) or a question bank (.docx) — "
+                       "the material you won't find in premade decks. "
                        "The app detects structure and topics automatically.",
         "subject": "Subject name (deck)",
         "subject_ph": "e.g. Microbiology",
@@ -272,6 +283,7 @@ st.markdown(f"""
   <h1>⚡ {MARKA}</h1>
   <p>{t["slogan"]}</p>
   <div class="chips">{chipy}</div>
+  <p style="color:#7b8494;font-size:.88rem;margin:.9rem auto 0;max-width:560px;">{t["trust_line"]}</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -350,16 +362,10 @@ def zapisz_uzyty_kod(kod):
         pass
 
 
-def _kod_zweryfikowany(kod):
-    """True, jeśli kod to ważny kod testowy (CARDFORGE_KODY) LUB ważny license key z Gumroada."""
-    # Kody testowe (dla właściciela) — lista po przecinku w sekrecie CARDFORGE_KODY.
-    wazne = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
-    if kod in wazne:
-        return True
-    # Weryfikacja license key przez API Gumroada (product_id z sekretu).
-    product_id = os.getenv("GUMROAD_PRODUCT_ID", "").strip()
-    if not product_id:
-        return False
+def _gumroad_verify(kod, product_id):
+    """Zwraca dict 'purchase' z Gumroada jeśli license key ważny dla product_id, inaczej None."""
+    if not (kod and product_id):
+        return None
     try:
         import json
         import urllib.request
@@ -367,20 +373,78 @@ def _kod_zweryfikowany(kod):
         dane = urllib.parse.urlencode({
             "product_id": product_id,
             "license_key": kod,
-            "increment_uses_count": "false",   # nie zużywamy — jednorazowość pilnujemy sami
+            "increment_uses_count": "false",   # nie zużywamy licznika Gumroada — pilnujemy sami
         }).encode()
         req = urllib.request.Request(
             "https://api.gumroad.com/v2/licenses/verify", data=dane)
         with urllib.request.urlopen(req, timeout=10) as odp:
             wynik = json.load(odp)
-        if not wynik.get("success"):
-            return False
-        zakup = wynik.get("purchase", {}) or {}
-        if zakup.get("refunded") or zakup.get("chargebacked") or zakup.get("disputed"):
-            return False   # zwrot/reklamacja → kod nieważny
-        return True
+        if wynik.get("success"):
+            return wynik.get("purchase", {}) or {}
     except Exception:
-        return False   # brak weryfikacji (błąd/nieznany kod) = NIE odblokowujemy (bezpiecznie)
+        pass
+    return None   # błąd/nieznany kod = None (traktujemy jako nieważny — bezpiecznie)
+
+
+def _kod_zweryfikowany(kod):
+    """True, jeśli kod to ważny kod testowy (CARDFORGE_KODY) LUB license key z Gumroada (1 dokument)."""
+    wazne = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
+    if kod in wazne:
+        return True
+    zakup = _gumroad_verify(kod, os.getenv("GUMROAD_PRODUCT_ID", "").strip())
+    if zakup is None:
+        return False
+    if zakup.get("refunded") or zakup.get("chargebacked") or zakup.get("disputed"):
+        return False   # zwrot/reklamacja → kod nieważny
+    return True
+
+
+def subskrypcja_aktywna(kod):
+    """True, jeśli kod to license key AKTYWNEJ subskrypcji (Gumroad membership)."""
+    kod = (kod or "").strip()
+    if not kod:
+        return False
+    testowe = [k.strip() for k in os.getenv("CARDFORGE_SUB_KODY", "").split(",") if k.strip()]
+    if kod in testowe:
+        return True
+    zakup = _gumroad_verify(kod, os.getenv("GUMROAD_SUB_PRODUCT_ID", "").strip())
+    if zakup is None:
+        return False
+    # Subskrypcja nieaktywna, jeśli anulowana / zakończona / nieudana płatność / zwrot.
+    for pole in ("subscription_cancelled_at", "subscription_ended_at",
+                 "subscription_failed_at", "refunded", "chargebacked", "disputed"):
+        if zakup.get(pole):
+            return False
+    return True
+
+
+def _abonenci_dane():
+    import json
+    try:
+        return json.load(open(ABONENCI_PLIK, encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def zuzycie_abonenta(kod):
+    """Ile dokumentów wygenerował ten abonament w BIEŻĄCYM miesiącu."""
+    import datetime
+    miesiac = datetime.date.today().strftime("%Y-%m")
+    return _abonenci_dane().get(f"{miesiac}|{(kod or '').strip()}", 0)
+
+
+def dolicz_abonenta(kod):
+    """Zwiększa licznik dokumentów abonenta w bieżącym miesiącu (fair-use)."""
+    import json
+    import datetime
+    d = _abonenci_dane()
+    miesiac = datetime.date.today().strftime("%Y-%m")
+    klucz = f"{miesiac}|{(kod or '').strip()}"
+    d[klucz] = d.get(klucz, 0) + 1
+    try:
+        json.dump(d, open(ABONENCI_PLIK, "w", encoding="utf-8"))
+    except Exception:
+        pass
 
 
 def kod_wazny(kod):
