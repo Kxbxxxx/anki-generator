@@ -28,7 +28,7 @@ Otwórz Terminal i wklej te komendy po kolei.
 Wejdź do folderu z projektem:
 
 ```bash
-cd "/Users/jakub/Claude Code/anki-generator"
+cd sciezka/do/anki-generator
 ```
 
 Stwórz "wirtualne środowisko" (osobny, czysty kącik na biblioteki tego projektu):
