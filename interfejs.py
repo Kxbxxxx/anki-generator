@@ -43,6 +43,10 @@ DARMOWE_JEDNOSTKI = 5     # dokument ≤ tyle stron/części = ZA DARMO (próbka
 LINK_PLATNOSCI = os.getenv("CARDFORGE_LINK", "")   # link do płatności za 1 dokument (Gumroad)
 LINK_SUB = os.getenv("CARDFORGE_SUB_LINK", "")     # link do subskrypcji (Gumroad membership)
 SUB_LIMIT_MIES = 20      # abonament: fair-use — ile dokumentów na miesiąc
+try:
+    SUB_CENA = int(os.getenv("CARDFORGE_SUB_CENA", "49"))   # cena abonamentu/mies. (do wyświetlenia)
+except ValueError:
+    SUB_CENA = 49
 
 # --- ZABEZPIECZENIA (ochrona przed spalaniem Twojego API) ------------------
 MAX_JEDNOSTKI = 400       # twardy limit rozmiaru 1 dokumentu (chroni przed gigantem)
@@ -142,6 +146,17 @@ TEKSTY = {
         "email_bad": "Podaj poprawny adres e-mail, żeby odebrać darmową próbkę.",
         "email_used": "Ten e-mail już wykorzystał swoją jedną darmową próbkę 🙂 "
                       "Kup dostęp powyżej, aby generować dalej.",
+        "sub_expander": "💎 Mam abonament CardForge (wpisz kod)",
+        "sub_code_label": "🔑 Kod abonamentu",
+        "sub_help": "Kod z Twojej subskrypcji — dostajesz go po wykupieniu abonamentu.",
+        "sub_active": "💎 Abonament aktywny! Wykorzystano **{uzyte}/{limit}** dokumentów "
+                      "w tym miesiącu. Generuj bez opłaty.",
+        "sub_limit": "💎 Wyczerpałeś limit **{limit}** dokumentów w tym miesiącu. "
+                     "Kup pojedynczy dokument albo poczekaj do nowego miesiąca.",
+        "sub_bad": "❌ Nieprawidłowy lub nieaktywny kod abonamentu.",
+        "sub_buy": "💎 Wykup abonament — {cena} zł/mies. (do {limit} dokumentów)",
+        "sub_generate_note": "💎 Abonament aktywny — generujesz w ramach abonamentu "
+                             "(bez dodatkowej opłaty).",
         "footer": f"{MARKA} · fiszki Anki z każdego dokumentu",
     },
     "en": {
@@ -231,6 +246,17 @@ TEKSTY = {
         "email_bad": "Enter a valid email to claim the free sample.",
         "email_used": "This email already used its one free sample 🙂 "
                       "Buy access above to keep generating.",
+        "sub_expander": "💎 I have a CardForge subscription (enter code)",
+        "sub_code_label": "🔑 Subscription code",
+        "sub_help": "The code from your subscription — you get it after subscribing.",
+        "sub_active": "💎 Subscription active! Used **{uzyte}/{limit}** documents "
+                      "this month. Generate at no extra cost.",
+        "sub_limit": "💎 You've used your **{limit}** documents this month. "
+                     "Buy a single document or wait for the new month.",
+        "sub_bad": "❌ Invalid or inactive subscription code.",
+        "sub_buy": "💎 Subscribe — {cena} zł/month (up to {limit} documents)",
+        "sub_generate_note": "💎 Subscription active — generating within your plan "
+                             "(no extra charge).",
         "footer": f"{MARKA} · Anki flashcards from any document",
     },
 }
@@ -551,6 +577,30 @@ with st.expander(t["advanced"]):
     zakres = st.text_input(t["zakres"], placeholder=t["zakres_ph"])
     opt_demo = False if TRYB_PRODUKCJI else st.checkbox(t["demo"])
 
+# --- ABONAMENT (subskrypcja) — kod abonenta odblokowuje generowanie bez opłaty ---
+subskrybent = False
+sub_kod_aktywny = ""
+if TRYB_PRODUKCJI:
+    with st.expander(t["sub_expander"]):
+        _sub_kod = st.text_input(t["sub_code_label"], help=t["sub_help"], key="sub_kod_in")
+        if _sub_kod.strip():
+            _cache_sub = st.session_state.setdefault("_ok_sub", set())
+            _aktywny = _sub_kod.strip() in _cache_sub or subskrypcja_aktywna(_sub_kod)
+            if _aktywny:
+                _cache_sub.add(_sub_kod.strip())
+                _uzyte = zuzycie_abonenta(_sub_kod)
+                if _uzyte < SUB_LIMIT_MIES:
+                    subskrybent = True
+                    sub_kod_aktywny = _sub_kod.strip()
+                    st.success(t["sub_active"].format(uzyte=_uzyte, limit=SUB_LIMIT_MIES))
+                else:
+                    st.warning(t["sub_limit"].format(limit=SUB_LIMIT_MIES))
+            else:
+                st.warning(t["sub_bad"])
+        if LINK_SUB:
+            st.markdown(f"[{t['sub_buy'].format(cena=SUB_CENA, limit=SUB_LIMIT_MIES)}]({LINK_SUB})")
+
+
 # WYCENA + BRAMKA — liczymy rozmiar dokumentu i decydujemy: darmowe czy płatne.
 szac = None
 darmowy = True
@@ -569,7 +619,9 @@ if szac:
     cena_pln = oblicz_cene(koszt_usd)
     if TRYB_PRODUKCJI and jednostki > PROG_OSTRZEZENIA:
         st.warning(t["too_large_warn"].format(n=jednostki))
-    if not TRYB_PRODUKCJI:
+    if subskrybent:
+        st.success(t["sub_generate_note"])
+    elif not TRYB_PRODUKCJI:
         # Tryb lokalny/deweloperski: pokaż tylko szacowany koszt API (jak dotąd).
         st.caption(t["estimate"].format(n=jednostki, c=f"{koszt_usd:.2f}"))
     elif darmowy:
@@ -744,10 +796,12 @@ if generuj:
     if szac and szac[0] > MAX_JEDNOSTKI:
         st.error(t["too_big"].format(n=szac[0], maks=MAX_JEDNOSTKI)); st.stop()
     # OCHRONA 2 — bramka płatności (produkcja): płatny dokument wymaga kodu.
-    if TRYB_PRODUKCJI and szac and not darmowy and not odblokowane:
+    # Abonent (subskrybent) omija — generuje w ramach abonamentu.
+    if TRYB_PRODUKCJI and szac and not darmowy and not odblokowane and not subskrybent:
         st.error(t["locked_stop"]); st.stop()
     # OCHRONA 3 — limity darmowych próbek (produkcja): anty-spam Twojego API.
-    if TRYB_PRODUKCJI and szac and darmowy:
+    # Abonent omija (płaci abonamentem, nie potrzebuje darmowej próbki/e-maila).
+    if TRYB_PRODUKCJI and szac and darmowy and not subskrybent:
         # 3a. Bramka e-mail: 1 darmowa próbka na e-mail (na zawsze).
         email_norm = (email_darmo or "").strip().lower()
         if not email_ok(email_norm):
@@ -770,9 +824,11 @@ if generuj:
     with open(sciezka_pliku, "wb") as f:
         f.write(plik.getbuffer())
 
-    # Darmowa próbka w produkcji → wymuszamy Standard (tańszy dla Ciebie),
-    # nawet gdyby ktoś wybrał Pro. Płatne dokumenty respektują wybór (cena rośnie).
-    model_efektywny = "claude-sonnet-5" if (TRYB_PRODUKCJI and szac and darmowy) else MODEL
+    # Standard wymuszamy dla DARMOWEJ próbki i dla ABONENTA (ochrona kosztu — abonament
+    # jest „prawie nieograniczony"). Płatne pojedyncze dokumenty respektują wybór (cena rośnie).
+    model_efektywny = ("claude-sonnet-5"
+                       if (TRYB_PRODUKCJI and (subskrybent or (szac and darmowy)))
+                       else MODEL)
 
     env = os.environ.copy()
     env["ANKI_MODEL"] = model_efektywny
@@ -803,14 +859,18 @@ if generuj:
         st.error(t["err_generic"]); st.code(pelny_log); st.stop()
 
     # Udana DARMOWA próbka → dolicz do limitów + zapisz e-mail (1 darmowa/e-mail).
-    if TRYB_PRODUKCJI and szac and darmowy:
+    if TRYB_PRODUKCJI and szac and darmowy and not subskrybent:
         st.session_state["darmowe_uzyte"] = st.session_state.get("darmowe_uzyte", 0) + 1
         dolicz_darmowe()
         zapisz_email_darmo((email_darmo or "").strip().lower())
 
+    # Udany dokument ABONENTA → dolicz do jego miesięcznego limitu (fair-use).
+    if TRYB_PRODUKCJI and subskrybent and sub_kod_aktywny:
+        dolicz_abonenta(sub_kod_aktywny)
+
     # Udany PŁATNY dokument → oznacz license key jako wykorzystany (jednorazowość).
     # Kody testowe (CARDFORGE_KODY) NIE są zużywane — zostają wielorazowe dla właściciela.
-    if TRYB_PRODUKCJI and szac and not darmowy and kod.strip():
+    if TRYB_PRODUKCJI and szac and not darmowy and not subskrybent and kod.strip():
         _testowe = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
         if kod.strip() not in _testowe:
             zapisz_uzyty_kod(kod)

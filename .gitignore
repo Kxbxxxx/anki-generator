@@ -20,6 +20,7 @@ __pycache__/
 .licznik_darmowych.json
 .darmowe_emaile.json
 .uzyte_kody.json
+.abonenci_zuzycie.json
 obrazki_tymczasowe/
 
 # System
