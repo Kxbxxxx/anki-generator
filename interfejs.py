@@ -48,6 +48,8 @@ try:
     SUB_CENA = int(os.getenv("CARDFORGE_SUB_CENA", "49"))   # cena abonamentu/mies. (do wyświetlenia)
 except ValueError:
     SUB_CENA = 49
+WSPARCIE_MODEL = "claude-haiku-4-5-20251001"   # tani model do czatu pomocy (AI live support)
+WSPARCIE_LIMIT = 12      # ile pytań do wsparcia na sesję (ochrona kosztu)
 
 # --- ZABEZPIECZENIA (ochrona przed spalaniem Twojego API) ------------------
 MAX_JEDNOSTKI = 400       # twardy limit rozmiaru 1 dokumentu (chroni przed gigantem)
@@ -160,6 +162,12 @@ TEKSTY = {
                              "(bez dodatkowej opłaty).",
         "sub_too_large": "💎 Abonament pokrywa dokumenty do **{maks}** stron. Ten ma **{n}** — "
                          "podziel go („Zakres stron” w Opcjach zaawansowanych) albo kup osobno.",
+        "help_expander": "❓ Pomoc — zapytaj asystenta CardForge",
+        "help_intro": "Masz pytanie? Zapytaj — pomogę z generowaniem, płatnością i importem do Anki.",
+        "help_placeholder": "Napisz pytanie…",
+        "help_send": "Wyślij",
+        "help_limit": "Wykorzystałeś limit pytań w tej sesji. Odśwież stronę, aby zapytać więcej.",
+        "help_error": "Przepraszam, chwilowy problem z asystentem. Spróbuj ponownie za chwilę.",
         "footer": f"{MARKA} · fiszki Anki z każdego dokumentu",
     },
     "en": {
@@ -262,6 +270,12 @@ TEKSTY = {
                              "(no extra charge).",
         "sub_too_large": "💎 Your plan covers documents up to **{maks}** pages. This one has "
                          "**{n}** — split it (“Page range” in advanced) or buy it separately.",
+        "help_expander": "❓ Help — ask the CardForge assistant",
+        "help_intro": "Got a question? Ask — I'll help with generating, payment and importing to Anki.",
+        "help_placeholder": "Type your question…",
+        "help_send": "Send",
+        "help_limit": "You've reached the question limit for this session. Refresh to ask more.",
+        "help_error": "Sorry, a temporary problem with the assistant. Please try again shortly.",
         "footer": f"{MARKA} · Anki flashcards from any document",
     },
 }
@@ -950,6 +964,90 @@ if st.session_state.get("edit_txt") and os.path.exists(st.session_state["edit_tx
             with open(out, "rb") as f:
                 st.download_button(t["rebuild_done"], f.read(),
                                    os.path.basename(out), use_container_width=True)
+
+
+# --- AI LIVE SUPPORT (czat pomocy, tani model Haiku) ----------------------
+PROMPT_WSPARCIA_PL = """Jesteś asystentem pomocy aplikacji CardForge — narzędzia, które zamienia \
+dokumenty (PDF skryptów/wykładów lub .docx z bazą pytań) w gotowe fiszki Anki (styl AnKing).
+
+Odpowiadaj TYLKO na pytania o CardForge i używanie fiszek w Anki. Pytania niezwiązane — grzecznie \
+odmów i wróć do tematu CardForge.
+
+Fakty:
+- Użycie: wgraj plik (PDF/.docx) → wybierz opcje (język fiszek, tryb) → „Generuj fiszki" → pobierz \
+plik .apkg → zaimportuj do Anki.
+- Import do Anki: otwórz Anki → Plik/File → Import → wybierz plik .apkg → gotowe (można też dwukliknąć .apkg).
+- Darmowa próbka: mały dokument (do 5 stron) za darmo, trzeba podać e-mail (jedna próbka na e-mail).
+- Płatność (większe dokumenty): (1) kup pojedynczy dokument — płacisz raz, dostajesz KOD; (2) abonament \
+49 zł/mies. — do 20 dokumentów/mies. Po opłacie wklej KOD w pole „Kod dostępu" (lub „Kod abonamentu") i generuj.
+- Kod pojedynczego dokumentu jest jednorazowy; kod abonamentu działa cały miesiąc do limitu.
+- Duży plik jest droższy — lepiej wgrać jeden rozdział albo użyć „Zakres stron".
+
+Częste problemy:
+- „Nie wyszły fiszki / błąd" → spróbuj ponownie; jeśli plik duży — podziel go / użyj zakresu stron.
+- „Zapłaciłem, a nie działa" → sprawdź, czy wkleiłeś dokładny kod; spróbuj ponownie.
+- Zwroty obsługuje Gumroad (platforma płatności).
+
+Pisz PO POLSKU, krótko, konkretnie, uprzejmie. Nie wymyślaj funkcji, których nie ma. Jeśli czegoś nie \
+wiesz — powiedz, że warto napisać do wsparcia."""
+
+PROMPT_WSPARCIA_EN = """You are the support assistant for CardForge — a tool that turns documents \
+(PDF notes/lectures or .docx question banks) into ready Anki flashcards (AnKing style).
+
+Answer ONLY questions about CardForge and using flashcards in Anki. For unrelated questions, politely \
+decline and steer back to CardForge.
+
+Facts:
+- Usage: upload a file (PDF/.docx) → choose options (flashcard language, mode) → "Generate flashcards" \
+→ download the .apkg → import into Anki.
+- Import to Anki: open Anki → File → Import → pick the .apkg → done (or double-click the .apkg).
+- Free sample: a small document (up to 5 pages) is free, requires an email (one sample per email).
+- Payment (larger docs): (1) buy a single document — pay once, get a CODE; (2) subscription 49 zł/month \
+— up to 20 documents/month. After paying, paste the CODE into "Access code" (or "Subscription code") and generate.
+- A single-document code is one-time; a subscription code works all month up to the limit.
+- Large files cost more — better to upload one chapter or use "Page range".
+
+Common issues:
+- "No cards / error" → try again; if the file is large — split it / use page range.
+- "I paid but it doesn't work" → check you pasted the exact code; try again.
+- Refunds are handled by Gumroad (the payment platform).
+
+Write concisely, clearly and politely in the user's language. Don't invent features. If unsure, suggest \
+contacting support."""
+
+
+def odpowiedz_wsparcia(wiadomosci, jezyk_ui):
+    """Odpowiedź asystenta wsparcia (tani model). Klucz z env (produkcja) lub podanego klucza."""
+    from anthropic import Anthropic
+    api = klucz or os.getenv("ANTHROPIC_API_KEY")
+    klient_ai = Anthropic(api_key=api) if api else Anthropic()
+    system = PROMPT_WSPARCIA_PL if jezyk_ui == "pl" else PROMPT_WSPARCIA_EN
+    odp = klient_ai.messages.create(
+        model=WSPARCIE_MODEL, max_tokens=450, system=system, messages=wiadomosci,
+    )
+    return odp.content[0].text
+
+
+with st.expander(t["help_expander"]):
+    st.caption(t["help_intro"])
+    _hist = st.session_state.setdefault("wsparcie_hist", [])
+    for _m in _hist:
+        st.markdown(("🧑 " if _m["role"] == "user" else "🤖 ") + _m["content"])
+    with st.form("wsparcie_form", clear_on_submit=True):
+        _pyt = st.text_input(t["help_placeholder"], placeholder=t["help_placeholder"],
+                             label_visibility="collapsed")
+        _wyslij = st.form_submit_button(t["help_send"])
+    if _wyslij and _pyt.strip():
+        if sum(1 for _m in _hist if _m["role"] == "user") >= WSPARCIE_LIMIT:
+            st.warning(t["help_limit"])
+        else:
+            _hist.append({"role": "user", "content": _pyt.strip()[:1000]})
+            try:
+                _odp = odpowiedz_wsparcia(_hist[-8:], L)
+            except Exception:
+                _odp = t["help_error"]
+            _hist.append({"role": "assistant", "content": _odp})
+            st.rerun()
 
 
 st.markdown(f'<div class="foot">{t["footer"]}</div>', unsafe_allow_html=True)
