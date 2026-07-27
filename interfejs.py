@@ -36,7 +36,8 @@ KATALOG = os.path.dirname(os.path.abspath(__file__))
 # W produkcji = 1 → schowany panel klucza/modelu, darmowa próbka + bramka płatności.
 TRYB_PRODUKCJI = os.getenv("CARDFORGE_PROD", "0") == "1"
 KURS_USD_PLN = 4.0        # przelicznik USD→PLN tylko do wyświetlania ceny
-MARZA = 3.0               # cena = koszt_API × MARZA  (Twój zysk = różnica)
+MARZA = 2.5               # cena = koszt_API × MARZA (~15 zł za rozdział ~30 stron, zdrowa marża)
+PROG_OSTRZEZENIA = 60     # powyżej tylu stron/części pokazujemy ostrzeżenie „duży plik = drożej”
 CENA_MIN_PLN = 5          # minimalna cena płatnego dokumentu (zł) = minimum PWYW na Gumroad
 DARMOWE_JEDNOSTKI = 5     # dokument ≤ tyle stron/części = ZA DARMO (próbka)
 LINK_PLATNOSCI = os.getenv("CARDFORGE_LINK", "")   # link do płatności (np. Gumroad)
@@ -119,6 +120,9 @@ TEKSTY = {
                        "(albo wgraj mniejszy plik, który jest za darmo).",
         "prod_note": "🎁 Mały dokument = za darmo. Większy = drobna opłata "
                      "(płacisz raz, za swój plik).",
+        "too_large_warn": "⚠️ Duży dokument (**{n}** stron) — cena rośnie z rozmiarem. "
+                          "Taniej: wgraj jeden rozdział/temat albo użyj „Zakres stron” "
+                          "w Opcjach zaawansowanych.",
         "too_big": "Dokument jest bardzo duży (**{n}** części, limit {maks}). "
                    "Podziel go na mniejsze pliki albo użyj „Zakres stron” "
                    "w opcjach zaawansowanych.",
@@ -201,6 +205,9 @@ TEKSTY = {
                        "(or upload a smaller file, which is free).",
         "prod_note": "🎁 Small document = free. Larger = a small one-off fee "
                      "(you pay once, for your file).",
+        "too_large_warn": "⚠️ Large document (**{n}** pages) — price grows with size. "
+                          "Cheaper: upload one chapter/topic or use “Page range” "
+                          "in advanced options.",
         "too_big": "This document is very large (**{n}** parts, limit {maks}). "
                    "Split it into smaller files or use the “Page range” "
                    "option under advanced.",
@@ -496,6 +503,8 @@ if szac:
     darmowy = jednostki <= DARMOWE_JEDNOSTKI
     # Cena zależna od ROZMIARU i MODELU (szacuj_koszt liczy oba) × marża.
     cena_pln = oblicz_cene(koszt_usd)
+    if TRYB_PRODUKCJI and jednostki > PROG_OSTRZEZENIA:
+        st.warning(t["too_large_warn"].format(n=jednostki))
     if not TRYB_PRODUKCJI:
         # Tryb lokalny/deweloperski: pokaż tylko szacowany koszt API (jak dotąd).
         st.caption(t["estimate"].format(n=jednostki, c=f"{koszt_usd:.2f}"))
