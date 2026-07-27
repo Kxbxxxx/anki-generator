@@ -38,6 +38,10 @@ TRYB_PRODUKCJI = os.getenv("CARDFORGE_PROD", "0") == "1"
 KURS_USD_PLN = 4.0        # przelicznik USD→PLN tylko do wyświetlania ceny
 MARZA = 3.0               # cena = koszt_API × MARZA  (Twój zysk = różnica)
 CENA_MIN_PLN = 5          # minimalna cena płatnego dokumentu (zł)
+try:
+    CENA_STALA = int(os.getenv("CARDFORGE_CENA", "19"))   # cena płatnego dokumentu = cena na Gumroad
+except ValueError:
+    CENA_STALA = 19
 DARMOWE_JEDNOSTKI = 5     # dokument ≤ tyle stron/części = ZA DARMO (próbka)
 LINK_PLATNOSCI = os.getenv("CARDFORGE_LINK", "")   # link do płatności (np. Gumroad)
 
@@ -494,7 +498,8 @@ if plik is not None and not opt_demo:
 if szac:
     jednostki, koszt_usd = szac
     darmowy = jednostki <= DARMOWE_JEDNOSTKI
-    cena_pln = oblicz_cene(koszt_usd)
+    # W produkcji cena = stała cena z Gumroada (spójność). Lokalnie: szacunek wg rozmiaru.
+    cena_pln = CENA_STALA if TRYB_PRODUKCJI else oblicz_cene(koszt_usd)
     if not TRYB_PRODUKCJI:
         # Tryb lokalny/deweloperski: pokaż tylko szacowany koszt API (jak dotąd).
         st.caption(t["estimate"].format(n=jednostki, c=f"{koszt_usd:.2f}"))
