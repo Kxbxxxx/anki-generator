@@ -354,15 +354,6 @@ else:
         klucz = st.text_input(t["api_key"], type="password", help=t["api_help"],
                               placeholder="sk-ant-…")
         st.divider()
-        opt_ollama = st.checkbox("🖥️ Ollama (lokalnie, za darmo)",
-                                 help="Używa lokalnego modelu Ollama zamiast API — 0 kosztu. "
-                                      "Wymaga zainstalowanego Ollama + `ollama serve`. "
-                                      "Jakość niższa niż Claude (wersja dla siebie).")
-        if opt_ollama:
-            ollama_model = st.text_input("Model Ollamy", value="llama3.1",
-                                         help="np. llama3.1, qwen2.5, mistral — musisz mieć "
-                                              "go pobranego: `ollama pull <model>`.")
-        st.divider()
         st.caption(t["cost_note"])
 
 
@@ -606,6 +597,15 @@ with st.expander(t["advanced"]):
     opt_slajdy = ac2.checkbox(t["slajdy"], help=t["slajdy_help"])
     zakres = st.text_input(t["zakres"], placeholder=t["zakres_ph"])
     opt_demo = False if TRYB_PRODUKCJI else st.checkbox(t["demo"])
+    # Ollama (lokalnie, za darmo) — tylko lokalnie/dev, dla właściciela.
+    if not TRYB_PRODUKCJI:
+        opt_ollama = st.checkbox("🖥️ Ollama (lokalnie, za darmo)",
+                                 help="Lokalny model Ollama zamiast API — 0 kosztu (dla siebie). "
+                                      "Wymaga zainstalowanego Ollama. Jakość niższa niż Claude.")
+        if opt_ollama:
+            ollama_model = st.text_input("Model Ollamy", value="llama3.1",
+                                         help="np. llama3.1, llama3.2, qwen2.5 — musisz mieć "
+                                              "go pobranego: `ollama pull <model>`.")
 
 # --- ABONAMENT (subskrypcja) — kod abonenta odblokowuje generowanie bez opłaty ---
 subskrybent = False
