@@ -341,16 +341,27 @@ JEZYKI_FISZEK = {
     "Deutsch": "Deutsch", "Español": "Español", "Français": "Français",
     "Italiano": "Italiano", "Українська": "Ukrainian",
 }
+opt_ollama = False           # tryb lokalny „za darmo" (Ollama) — tylko dev, dla właściciela
+ollama_model = "llama3.1"
 if TRYB_PRODUKCJI:
     # Produkcja: klucz API schowany na serwerze (sekrety). Reszta widoczna niżej.
     klucz = ""
 else:
-    # Lokalnie (dev): klucz + notka o koszcie w panelu bocznym.
+    # Lokalnie (dev): klucz + Ollama (za darmo) + notka o koszcie w panelu bocznym.
     with st.sidebar:
         st.markdown(f"### ⚡ {MARKA}")
         st.caption(t["settings"])
         klucz = st.text_input(t["api_key"], type="password", help=t["api_help"],
                               placeholder="sk-ant-…")
+        st.divider()
+        opt_ollama = st.checkbox("🖥️ Ollama (lokalnie, za darmo)",
+                                 help="Używa lokalnego modelu Ollama zamiast API — 0 kosztu. "
+                                      "Wymaga zainstalowanego Ollama + `ollama serve`. "
+                                      "Jakość niższa niż Claude (wersja dla siebie).")
+        if opt_ollama:
+            ollama_model = st.text_input("Model Ollamy", value="llama3.1",
+                                         help="np. llama3.1, qwen2.5, mistral — musisz mieć "
+                                              "go pobranego: `ollama pull <model>`.")
         st.divider()
         st.caption(t["cost_note"])
 
@@ -838,8 +849,8 @@ if generuj:
             st.warning(t["free_used_session"]); st.stop()
         if darmowe_dzis() >= LIMIT_DARMOWYCH_DZIENNIE:
             st.warning(t["free_used_today"]); st.stop()
-    # Klucz API: w produkcji jest na serwerze (env), więc user go nie podaje.
-    if not TRYB_PRODUKCJI and not opt_demo and not klucz \
+    # Klucz API: w produkcji jest na serwerze (env); w trybie Ollama nie jest potrzebny.
+    if not TRYB_PRODUKCJI and not opt_demo and not opt_ollama and not klucz \
             and not os.path.exists(os.path.join(KATALOG, ".env")):
         st.error(t["err_key"]); st.stop()
 
@@ -861,6 +872,9 @@ if generuj:
     env["ANKI_JEZYK"] = ANKI_JEZYK
     if klucz:
         env["ANTHROPIC_API_KEY"] = klucz
+    if opt_ollama:   # tryb lokalny „za darmo": silnik użyje Ollamy zamiast API
+        env["ANKI_BACKEND"] = "ollama"
+        env["OLLAMA_MODEL"] = ollama_model or "llama3.1"
 
     # Darmowa próbka w produkcji → BEZ recenzenta (tańsza dla Ciebie).
     recenzja_efektywna = opt_recenzja and not (TRYB_PRODUKCJI and szac and darmowy)

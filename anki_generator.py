@@ -32,6 +32,10 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 
 MODEL = os.getenv("ANKI_MODEL", "claude-sonnet-5")   # model (GUI może nadpisać)
+# Backend: "anthropic" (Claude API, płatne) lub "ollama" (lokalny model, ZA DARMO — dla siebie).
+BACKEND = os.getenv("ANKI_BACKEND", "anthropic").lower()
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")           # nazwa lokalnego modelu Ollamy
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")  # adres serwera Ollamy
 ZNAKI_NA_CHUNK = 3500            # jak duże kawałki tekstu wysyłamy naraz
 MIN_ZNAKOW_STRONY = 200          # strony krótsze niż to pomijamy (puste/okładki)
 FISZEK_NA_PARTIE_RECENZJI = 50   # ile fiszek recenzent ogląda naraz
@@ -464,6 +468,8 @@ CENY = {
 _cena_in, _cena_out = CENY.get(MODEL, (5.0, 25.0))
 CENA_WEJSCIE = _cena_in / 1_000_000
 CENA_WYJSCIE = _cena_out / 1_000_000
+if BACKEND == "ollama":
+    CENA_WEJSCIE = CENA_WYJSCIE = 0.0   # lokalny model Ollamy = za darmo
 
 
 def dolicz_zuzycie(odpowiedz):
@@ -486,6 +492,51 @@ def z_ponowieniem(wywolanie, opis, domyslne):
                 continue
             print(f"    (pominięto {opis} — błąd: {type(e).__name__})")
             return domyslne
+
+
+# --- Backend OLLAMA (lokalny model, za darmo) -----------------------------
+# Namiastka klienta Anthropic: ten sam interfejs `.messages.parse(...)`, więc
+# cała reszta silnika działa bez zmian. Woła lokalny serwer Ollamy z JSON-schema.
+class _OllamaUsage:
+    def __init__(self, wej, wyj):
+        self.input_tokens = wej
+        self.output_tokens = wyj
+
+
+class _OllamaOdpowiedz:
+    def __init__(self, parsed, usage):
+        self.parsed_output = parsed
+        self.usage = usage
+
+
+class _OllamaMessages:
+    def parse(self, model=None, max_tokens=None, system=None, messages=None, output_format=None):
+        import json
+        import urllib.request
+        wiad = ([{"role": "system", "content": system}] if system else []) + list(messages or [])
+        payload = {
+            "model": OLLAMA_MODEL,
+            "messages": wiad,
+            "format": output_format.model_json_schema(),   # structured output przez JSON-schema
+            "stream": False,
+            "options": {"temperature": 0.3, "num_predict": max_tokens or 4096},
+        }
+        req = urllib.request.Request(
+            f"{OLLAMA_URL}/api/chat",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=600) as r:
+            dane = json.load(r)
+        tekst = (dane.get("message") or {}).get("content", "")
+        parsed = output_format.model_validate_json(tekst)
+        usage = _OllamaUsage(dane.get("prompt_eval_count", 0), dane.get("eval_count", 0))
+        return _OllamaOdpowiedz(parsed, usage)
+
+
+class OllamaKlient:
+    """Namiastka klienta dla lokalnego Ollama — ten sam interfejs co Anthropic()."""
+    def __init__(self):
+        self.messages = _OllamaMessages()
 
 
 def wygeneruj_fiszki(klient, tekst):
@@ -863,6 +914,10 @@ def main():
     klient = None
     if tryb_demo:
         print(">>> TRYB DEMO: bez API, fiszki są zaślepkami (za darmo). <<<")
+    elif BACKEND == "ollama":
+        print(f">>> TRYB OLLAMA: lokalny model '{OLLAMA_MODEL}' — ZA DARMO, bez API. <<<")
+        print("    (wymaga uruchomionego Ollama: `ollama serve` + `ollama pull " + OLLAMA_MODEL + "`)")
+        klient = OllamaKlient()
     else:
         load_dotenv()
         if not os.getenv("ANTHROPIC_API_KEY"):
