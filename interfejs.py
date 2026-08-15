@@ -97,6 +97,10 @@ TEKSTY = {
         "recenzja": "Recenzent", "recenzja_help": "Usuwa duplikaty i słabe fiszki.",
         "cloze": "Fiszki cloze", "cloze_help": "Luki {{c1::…}}.",
         "slajdy": "Zrzuty slajdów", "slajdy_help": "Dla prezentacji: slajd jako obrazek.",
+        "wizja": "🔬 Tryb wizji (diagramy + skany)",
+        "wizja_help": "Claude WIDZI obrazy stron: dołącza właściwe ryciny/diagramy do kart "
+                      "i czyta skanowane PDF (OCR). Droższy (~2-3×), lepszy dla materiału z "
+                      "rycinami. Działa dla kart pytanie-odpowiedź (nie cloze).",
         "zakres": "Zakres stron / fragmentów (opcjonalnie)",
         "zakres_ph": "np. 1-20  (puste = całość)",
         "demo": "🆓 Tryb demo — za darmo, bez kosztu (zaślepki do testu)",
@@ -205,6 +209,10 @@ TEKSTY = {
         "recenzja": "Reviewer", "recenzja_help": "Removes duplicates and weak cards.",
         "cloze": "Cloze cards", "cloze_help": "Blanks {{c1::…}}.",
         "slajdy": "Slide snapshots", "slajdy_help": "For slides: whole slide as an image.",
+        "wizja": "🔬 Vision mode (diagrams + scans)",
+        "wizja_help": "Claude SEES page images: attaches the right figures to cards and reads "
+                      "scanned PDFs (OCR). Pricier (~2-3×), better for image-heavy material. "
+                      "Works for question-answer cards (not cloze).",
         "zakres": "Page / fragment range (optional)",
         "zakres_ph": "e.g. 1-20  (empty = whole file)",
         "demo": "🆓 Demo mode — free, no cost (placeholder cards for testing)",
@@ -358,7 +366,7 @@ else:
 
 
 # --- WYCENA / BRAMKA PŁATNOŚCI (funkcje pomocnicze) ------------------------
-def szacuj_koszt(plik, model, recenzja):
+def szacuj_koszt(plik, model, recenzja, wizja=False):
     """Zwraca (liczba_części, koszt_usd) — przybliżony koszt generowania."""
     try:
         dane = plik.getvalue()
@@ -379,6 +387,8 @@ def szacuj_koszt(plik, model, recenzja):
     if jednostki <= 0:
         return None
     na_jednostke = 0.12 if "opus" in model else 0.035     # rząd wielkości z danych
+    if wizja:
+        na_jednostke *= 3     # tryb wizji = obraz każdej strony = więcej tokenów
     koszt = jednostki * na_jednostke * (1.4 if recenzja else 1.0)
     return jednostki, koszt
 
@@ -596,6 +606,7 @@ with st.expander(t["advanced"]):
     opt_cloze = ac1.checkbox(t["cloze"], help=t["cloze_help"])
     opt_slajdy = ac2.checkbox(t["slajdy"], help=t["slajdy_help"])
     zakres = st.text_input(t["zakres"], placeholder=t["zakres_ph"])
+    opt_wizja = st.checkbox(t["wizja"], help=t["wizja_help"])
     opt_demo = False if TRYB_PRODUKCJI else st.checkbox(t["demo"])
     # Ollama (lokalnie, za darmo) — tylko lokalnie/dev, dla właściciela.
     if not TRYB_PRODUKCJI:
@@ -640,7 +651,7 @@ email_darmo = ""     # e-mail do odebrania darmowej próbki (tylko produkcja)
 kod = ""             # license key / kod dostępu (płatny dokument, tylko produkcja)
 
 if plik is not None and not opt_demo:
-    szac = szacuj_koszt(plik, MODEL, opt_recenzja)
+    szac = szacuj_koszt(plik, MODEL, opt_recenzja, opt_wizja)
 
 if szac:
     jednostki, koszt_usd = szac
@@ -875,6 +886,8 @@ if generuj:
     if opt_ollama:   # tryb lokalny „za darmo": silnik użyje Ollamy zamiast API
         env["ANKI_BACKEND"] = "ollama"
         env["OLLAMA_MODEL"] = ollama_model or "llama3.1"
+    if opt_wizja:    # tryb wizji: silnik wysyła obrazy stron do Claude (ryciny + OCR)
+        env["ANKI_WIZJA"] = "1"
 
     # Darmowa próbka w produkcji → BEZ recenzenta (tańsza dla Ciebie).
     recenzja_efektywna = opt_recenzja and not (TRYB_PRODUKCJI and szac and darmowy)

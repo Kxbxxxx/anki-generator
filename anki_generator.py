@@ -36,6 +36,8 @@ MODEL = os.getenv("ANKI_MODEL", "claude-sonnet-5")   # model (GUI może nadpisa�
 BACKEND = os.getenv("ANKI_BACKEND", "anthropic").lower()
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")           # nazwa lokalnego modelu Ollamy
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")  # adres serwera Ollamy
+# Tryb WIZJI: Claude widzi obraz strony (ryciny + OCR skanów) i sam oznacza, która karta dostaje rycinę.
+TRYB_WIZJA = os.getenv("ANKI_WIZJA", "0") == "1"
 ZNAKI_NA_CHUNK = 3500            # jak duże kawałki tekstu wysyłamy naraz
 MIN_ZNAKOW_STRONY = 200          # strony krótsze niż to pomijamy (puste/okładki)
 FISZEK_NA_PARTIE_RECENZJI = 50   # ile fiszek recenzent ogląda naraz
@@ -539,6 +541,54 @@ class OllamaKlient:
         self.messages = _OllamaMessages()
 
 
+# --- TRYB WIZJI (Claude widzi obraz strony: ryciny + OCR skanów) -----------
+class FiszkaWizja(BaseModel):
+    pytanie: str
+    odpowiedz: str
+    notatka: str
+    obrazek: bool          # True = karta dotyczy ryciny/diagramu widocznego na stronie
+
+
+class ListaFiszekWizja(BaseModel):
+    temat: str
+    fiszki: list[FiszkaWizja]
+
+
+PROMPT_SYSTEMOWY_WIZJA = PROMPT_SYSTEMOWY + """
+
+=== TRYB WIZJI — WIDZISZ OBRAZ STRONY (tekst + ewentualne ryciny/diagramy/schematy) ===
+- Jeśli TEKST strony jest pusty lub to skan — ODCZYTAJ treść z obrazu i na jej podstawie zrób fiszki.
+- Dla KAŻDEJ karty ustaw pole `obrazek`: TRUE tylko gdy karta dotyczy ryciny/diagramu/schematu
+  widocznego na stronie (wtedy dołączymy tę rycinę do karty). Karty czysto tekstowe: FALSE.
+- Zwykle 0-2 karty na stronie mają obrazek=true (te o diagramie). Nie oznaczaj wszystkich.
+- NIE rób fiszek o nieistotnych detalach ilustracji (kolor strzałki, numer figury, źródło ryciny)."""
+
+
+def wygeneruj_fiszki_wizja(klient, tekst, obraz_png):
+    """Fiszki QA z WIZJĄ: Claude widzi obraz strony (ryciny + OCR). Zwraca (pary, temat),
+    gdzie pary = [(Fiszka, czy_dolaczyc_obrazek: bool)]."""
+    import base64
+    b64 = base64.standard_b64encode(obraz_png).decode("ascii")
+    tresc = [
+        {"type": "image",
+         "source": {"type": "base64", "media_type": "image/png", "data": b64}},
+        {"type": "text", "text": f"{PRZYPOMNIENIE_JEZYK}\n\n"
+         f"TEKST STRONY (może być pusty — wtedy czytaj z obrazu):\n{tekst}"},
+    ]
+    odpowiedz = klient.messages.parse(
+        model=MODEL,
+        max_tokens=16000,
+        system=PROMPT_SYSTEMOWY_WIZJA,
+        messages=[{"role": "user", "content": tresc}],
+        output_format=ListaFiszekWizja,
+    )
+    dolicz_zuzycie(odpowiedz)
+    w = odpowiedz.parsed_output
+    pary = [(Fiszka(pytanie=f.pytanie, odpowiedz=f.odpowiedz, notatka=f.notatka), bool(f.obrazek))
+            for f in w.fiszki]
+    return pary, popraw_temat(w.temat)
+
+
 def wygeneruj_fiszki(klient, tekst):
     """Zwykłe fiszki pytanie-odpowiedź. Zwraca (lista_fiszek, temat)."""
     odpowiedz = klient.messages.parse(
@@ -977,25 +1027,32 @@ def main():
             print(f"Zakres stron: {od}-{do}")
         if tryb_slajdy:
             print("Tryb slajdów: do fiszek dołączę zrzut całego slajdu.")
+        if TRYB_WIZJA:
+            print("🔬 TRYB WIZJI: Claude widzi obrazy stron (ryciny + OCR skanów). "
+                  "Droższy, ale dołącza właściwe diagramy do kart.")
         print(f"Czytam PDF: {sciezka_pdf}")
-        strony = wczytaj_pdf(sciezka_pdf, od=od, do=do, render_slajdy=tryb_slajdy)
+        # W trybie wizji renderujemy strony (Claude musi zobaczyć obraz strony).
+        strony = wczytaj_pdf(sciezka_pdf, od=od, do=do,
+                             render_slajdy=(tryb_slajdy or TRYB_WIZJA))
 
     for strona in strony:
         numer_strony = strona["numer"]
         tekst = strona["tekst"]
-        if len(tekst) < MIN_ZNAKOW_STRONY:
-            continue  # pomijamy prawie puste strony
+        render_png = strona.get("render_png")
+        # Prawie puste strony pomijamy — CHYBA że tryb wizji (Claude odczyta treść z obrazu/skanu).
+        if len(tekst) < MIN_ZNAKOW_STRONY and not (TRYB_WIZJA and render_png):
+            continue
 
-        # Wybór obrazka dla fiszek z tej strony:
-        #  - tryb slajdów: zrzut całej strony, dołączany do KAŻDEJ fiszki z tej strony,
-        #  - inaczej: pierwszy wbudowany obrazek, tylko do pierwszej fiszki.
+        # Obraz do PRZYPIĘCIA na karcie: preferuj czystą wbudowaną rycinę, potem zrzut strony.
         nazwa_obrazka = None
         do_wszystkich = False
-        if tryb_slajdy and strona["render_png"]:
-            dane_png = strona["render_png"]
+        if tryb_slajdy and render_png:
+            dane_png = render_png
             do_wszystkich = True
         elif strona["obrazki"]:
             dane_png = strona["obrazki"][0]
+        elif TRYB_WIZJA and render_png:
+            dane_png = render_png
         else:
             dane_png = None
 
@@ -1009,11 +1066,21 @@ def main():
             if sciezka_obrazka not in pliki_multimedialne:
                 pliki_multimedialne.append(sciezka_obrazka)
 
-        for chunk in podziel_na_chunki(tekst, ZNAKI_NA_CHUNK):
+        # W trybie wizji dopuszczamy pusty tekst (skan) — jeden przebieg na samym obrazie.
+        chunki_strony = (podziel_na_chunki(tekst, ZNAKI_NA_CHUNK)
+                         or ([""] if (TRYB_WIZJA and render_png) else []))
+        for chunk in chunki_strony:
             print(f"  Strona {numer_strony}: generuję fiszki...")
+            flagi = None   # tryb wizji: lista bool (czy dana karta dostaje rycinę)
             if tryb_demo:
                 fiszki, temat = (wygeneruj_fiszki_cloze_demo(chunk) if tryb_cloze
                                  else wygeneruj_fiszki_demo(chunk)), "Inne"
+            elif TRYB_WIZJA and render_png and not tryb_cloze and BACKEND != "ollama":
+                pary, temat = z_ponowieniem(
+                    lambda: wygeneruj_fiszki_wizja(klient, chunk, render_png),
+                    f"strona {numer_strony} (wizja)", ([], "Inne"))
+                fiszki = [f for f, _ in pary]
+                flagi = [fl for _, fl in pary]
             elif tryb_cloze:
                 fiszki, temat = z_ponowieniem(
                     lambda: wygeneruj_fiszki_cloze(klient, chunk),
@@ -1027,7 +1094,9 @@ def main():
                 temat = mapa_struktury.get(numer_strony, "Inne")
             zrodlo = f"{nazwa_zrodla}, str. {numer_strony}"
             for i, fiszka in enumerate(fiszki):
-                if do_wszystkich:
+                if flagi is not None:   # WIZJA: rycina tylko na kartach oznaczonych przez Claude
+                    obrazek_dla_tej = nazwa_obrazka if (flagi[i] and nazwa_obrazka) else None
+                elif do_wszystkich:
                     obrazek_dla_tej = nazwa_obrazka          # slajd do każdej fiszki
                 else:
                     obrazek_dla_tej = nazwa_obrazka if i == 0 else None
