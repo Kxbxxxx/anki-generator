@@ -56,7 +56,7 @@ WSPARCIE_LIMIT = 12      # ile pytań do wsparcia na sesję (ochrona kosztu)
 SKLEP_DECKI = [
     {"nazwa": "Fizjologia — WUM 2 rok (komplet)",
      "opis": "~4000 fiszek, wszystkie kolokwia, Q&A + cloze, ryciny, styl AnKing.",
-     "cena": 79, "link": ""},
+     "cena": 79, "link": "https://cardforge.gumroad.com/l/jixhif"},
     {"nazwa": "Biochemia — WUM 2 rok (komplet)",
      "opis": "Wszystkie kolokwia i seminaria, sprawdzone fiszki.",
      "cena": 79, "link": ""},
