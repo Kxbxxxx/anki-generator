@@ -51,6 +51,31 @@ except ValueError:
 WSPARCIE_MODEL = "claude-haiku-4-5-20251001"   # tani model do czatu pomocy (AI live support)
 WSPARCIE_LIMIT = 12      # ile pytań do wsparcia na sesję (ochrona kosztu)
 
+# Podgląd przykładowej karty z trybu WIZJI (mockup: tekst AnKing + prosty diagram SVG).
+PODGLAD_WIZJA_HTML = """
+<div style="font-family:'Times New Roman',Georgia,serif;background:#272828;color:#FFFAFA;
+     border:1px solid #3a4150;border-radius:14px;padding:18px 20px;max-width:440px;margin:8px auto;
+     font-size:15px;line-height:1.55;text-align:center;">
+  <div>W <u>węźle chłonnym</u> <b>komórki dendrytyczne</b> gromadzą się w strefie
+       <span style="color:#4da3ff"><b>przykorowej (parakortykalnej)</b></span></div>
+  <div style="margin:14px 0 4px;">
+    <svg width="220" height="130" viewBox="0 0 220 130" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="110" cy="65" rx="95" ry="52" fill="#f2d7c4" stroke="#cf8f6e" stroke-width="2"/>
+      <path d="M110 15 V115" stroke="#cf8f6e" stroke-width="1.4" stroke-dasharray="4 4"/>
+      <circle cx="72" cy="58" r="17" fill="#8ec5ff"/>
+      <text x="72" y="62" font-size="10" text-anchor="middle" fill="#0b2a4a" font-family="sans-serif">DC</text>
+      <circle cx="150" cy="72" r="14" fill="#ffd27f"/>
+      <text x="47" y="30" font-size="9" fill="#5a3d2a" font-family="sans-serif">kora</text>
+      <text x="150" y="98" font-size="9" text-anchor="middle" fill="#5a3d2a" font-family="sans-serif">strefa T</text>
+      <text x="90" y="120" font-size="9" fill="#5a3d2a" font-family="sans-serif">strefa B</text>
+    </svg>
+  </div>
+  <div style="font-size:11px;color:#8b93a7;font-family:-apple-system,sans-serif;margin-top:6px;">
+    📎 tak może wyglądać karta z trybu wizji — Claude sam dołączył właściwy diagram
+  </div>
+</div>
+"""
+
 # --- ZABEZPIECZENIA (ochrona przed spalaniem Twojego API) ------------------
 MAX_JEDNOSTKI = 400       # twardy limit rozmiaru 1 dokumentu (chroni przed gigantem)
 DARMOWE_NA_SESJE = 2      # ile darmowych próbek na jedną sesję przeglądarki
@@ -101,6 +126,10 @@ TEKSTY = {
         "wizja_help": "Claude WIDZI obrazy stron: dołącza właściwe ryciny/diagramy do kart "
                       "i czyta skanowane PDF (OCR). Droższy (~2-3×), lepszy dla materiału z "
                       "rycinami. Działa dla kart pytanie-odpowiedź (nie cloze).",
+        "sekcja_karty": "🎴 Jakie fiszki chcesz?",
+        "typ_karty": "Typ karty",
+        "typ_qa": "Pytanie-odpowiedź",
+        "typ_cloze": "Cloze (luki)",
         "zakres": "Zakres stron / fragmentów (opcjonalnie)",
         "zakres_ph": "np. 1-20  (puste = całość)",
         "demo": "🆓 Tryb demo — za darmo, bez kosztu (zaślepki do testu)",
@@ -213,6 +242,10 @@ TEKSTY = {
         "wizja_help": "Claude SEES page images: attaches the right figures to cards and reads "
                       "scanned PDFs (OCR). Pricier (~2-3×), better for image-heavy material. "
                       "Works for question-answer cards (not cloze).",
+        "sekcja_karty": "🎴 What cards do you want?",
+        "typ_karty": "Card type",
+        "typ_qa": "Question-answer",
+        "typ_cloze": "Cloze (blanks)",
         "zakres": "Page / fragment range (optional)",
         "zakres_ph": "e.g. 1-20  (empty = whole file)",
         "demo": "🆓 Demo mode — free, no cost (placeholder cards for testing)",
@@ -588,25 +621,30 @@ if TRYB_PRODUKCJI:
 
 przedmiot = st.text_input(t["subject"], placeholder=t["subject_ph"])
 
-# USTAWIENIA WIDOCZNE dla użytkownika: język fiszek, tryb treści, jakość.
+# --- 🎴 STYL KART: najważniejsze wybory w jednym miejscu (typ · jakość · wizja) ---
+st.markdown(f"**{t['sekcja_karty']}**")
+_k1, _k2 = st.columns(2)
+typ_wybor = _k1.radio(t["typ_karty"], [t["typ_qa"], t["typ_cloze"]], help=t["cloze_help"])
+opt_cloze = (typ_wybor == t["typ_cloze"])
+model_wybor = _k2.radio(t["model"], [t["model_cheap"], t["model_best"]], help=t["model_help"])
+MODEL = "claude-sonnet-5" if model_wybor == t["model_cheap"] else "claude-opus-4-8"
+opt_wizja = st.checkbox(t["wizja"], help=t["wizja_help"])
+if opt_wizja:
+    components.html(PODGLAD_WIZJA_HTML, height=300)
+
+# --- Język fiszek + tryb treści ---
 _c1, _c2 = st.columns(2)
 jezyk_label = _c1.selectbox(t["lang_cards"], list(JEZYKI_FISZEK.keys()),
                             help=t["lang_cards_help"])
 ANKI_JEZYK = JEZYKI_FISZEK[jezyk_label]
 tryb_wybor = _c2.selectbox(t["mode"], [t["mode_general"], t["mode_med"]], help=t["mode_help"])
 TRYB = "medycyna" if tryb_wybor == t["mode_med"] else "ogolny"
-model_wybor = st.radio(t["model"], [t["model_cheap"], t["model_best"]],
-                       help=t["model_help"], horizontal=True)
-MODEL = "claude-sonnet-5" if model_wybor == t["model_cheap"] else "claude-opus-4-8"
 
 opt_recenzja = st.checkbox(t["recenzja"], value=True, help=t["recenzja_help"])
 
 with st.expander(t["advanced"]):
-    ac1, ac2 = st.columns(2)
-    opt_cloze = ac1.checkbox(t["cloze"], help=t["cloze_help"])
-    opt_slajdy = ac2.checkbox(t["slajdy"], help=t["slajdy_help"])
+    opt_slajdy = st.checkbox(t["slajdy"], help=t["slajdy_help"])
     zakres = st.text_input(t["zakres"], placeholder=t["zakres_ph"])
-    opt_wizja = st.checkbox(t["wizja"], help=t["wizja_help"])
     opt_demo = False if TRYB_PRODUKCJI else st.checkbox(t["demo"])
     # Ollama (lokalnie, za darmo) — tylko lokalnie/dev, dla właściciela.
     if not TRYB_PRODUKCJI:
