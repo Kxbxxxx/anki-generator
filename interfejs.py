@@ -51,6 +51,26 @@ except ValueError:
 WSPARCIE_MODEL = "claude-haiku-4-5-20251001"   # tani model do czatu pomocy (AI live support)
 WSPARCIE_LIMIT = 12      # ile pytań do wsparcia na sesję (ochrona kosztu)
 
+# --- 🛒 SKLEP Z GOTOWYMI DECKAMI (edytuj listę; `link` = URL produktu Gumroad) ---
+# Sklep pokazuje się klientom dopiero gdy przynajmniej jeden deck ma wypełniony `link`.
+SKLEP_DECKI = [
+    {"nazwa": "Fizjologia — WUM 2 rok (komplet)",
+     "opis": "~4000 fiszek, wszystkie kolokwia, Q&A + cloze, ryciny, styl AnKing.",
+     "cena": 79, "link": ""},
+    {"nazwa": "Biochemia — WUM 2 rok (komplet)",
+     "opis": "Wszystkie kolokwia i seminaria, sprawdzone fiszki.",
+     "cena": 79, "link": ""},
+    {"nazwa": "Immunologia — WUM 2 rok",
+     "opis": "Seminaria + egzamin, gotowe fiszki.",
+     "cena": 70, "link": ""},
+    {"nazwa": "Parazytologia — WUM 2 rok",
+     "opis": "Teoria + preparaty, komplet.",
+     "cena": 70, "link": ""},
+    {"nazwa": "🎁 BUNDLE — CAŁY 2 rok WUM",
+     "opis": "Wszystkie przedmioty razem (~15-25 tys. fiszek). Największa oszczędność.",
+     "cena": 199, "link": ""},
+]
+
 # Podgląd przykładowej karty z trybu WIZJI (mockup: tekst AnKing + prosty diagram SVG).
 PODGLAD_WIZJA_HTML = """
 <div style="font-family:'Times New Roman',Georgia,serif;background:#272828;color:#FFFAFA;
@@ -201,6 +221,11 @@ TEKSTY = {
         "help_send": "Wyślij",
         "help_limit": "Wykorzystałeś limit pytań w tej sesji. Odśwież stronę, aby zapytać więcej.",
         "help_error": "Przepraszam, chwilowy problem z asystentem. Spróbuj ponownie za chwilę.",
+        "sklep_tytul": "🛒 Gotowe decki WUM (2 rok)",
+        "sklep_opis": "Nie chcesz robić fiszek sam? Kup gotowy, kompletny deck — sprawdzone "
+                      "karty, wszystkie kolokwia, styl AnKing.",
+        "sklep_kup": "💳 Kup",
+        "sklep_wkrotce": "Wkrótce",
         "footer": f"{MARKA} · fiszki Anki z każdego dokumentu",
     },
     "en": {
@@ -317,6 +342,11 @@ TEKSTY = {
         "help_send": "Send",
         "help_limit": "You've reached the question limit for this session. Refresh to ask more.",
         "help_error": "Sorry, a temporary problem with the assistant. Please try again shortly.",
+        "sklep_tytul": "🛒 Ready-made decks (WUM year 2)",
+        "sklep_opis": "Don't want to make cards yourself? Buy a complete ready deck — verified "
+                      "cards, all exams, AnKing style.",
+        "sklep_kup": "💳 Buy",
+        "sklep_wkrotce": "Soon",
         "footer": f"{MARKA} · Anki flashcards from any document",
     },
 }
@@ -1029,6 +1059,27 @@ if st.session_state.get("edit_txt") and os.path.exists(st.session_state["edit_tx
             with open(out, "rb") as f:
                 st.download_button(t["rebuild_done"], f.read(),
                                    os.path.basename(out), use_container_width=True)
+
+
+# --- 🛒 SKLEP Z GOTOWYMI DECKAMI ------------------------------------------
+# Pokazuje się klientom, gdy przynajmniej jeden deck ma `link`. Lokalnie zawsze (podgląd).
+if any(d["link"] for d in SKLEP_DECKI) or not TRYB_PRODUKCJI:
+    st.divider()
+    st.markdown(f"## {t['sklep_tytul']}")
+    st.caption(t["sklep_opis"])
+    for _d in SKLEP_DECKI:
+        with st.container(border=True):
+            _sc1, _sc2 = st.columns([3, 1])
+            _sc1.markdown(
+                f"**{_d['nazwa']}**  \n"
+                f"<span style='color:#8b93a7;font-size:.9rem'>{_d['opis']}</span>",
+                unsafe_allow_html=True)
+            _sc2.markdown(f"### {_d['cena']} zł")
+            if _d["link"]:
+                _sc2.link_button(t["sklep_kup"], _d["link"], use_container_width=True)
+            else:
+                _sc2.button(t["sklep_wkrotce"], disabled=True, use_container_width=True,
+                            key=f"wkrotce_{_d['nazwa']}")
 
 
 # --- AI LIVE SUPPORT (czat pomocy, tani model Haiku) ----------------------
