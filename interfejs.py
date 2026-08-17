@@ -68,7 +68,7 @@ SKLEP_DECKI = [
      "cena": 70, "link": "https://cardforge.gumroad.com/l/nkztoz"},
     {"nazwa": "🎁 BUNDLE — CAŁY 2 rok WUM (wszystko)",
      "opis": "Fizjo + Biochemia + Immuno + Parazyto… ~20 tys. fiszek. Największa oszczędność.",
-     "cena": 199, "link": ""},
+     "cena": 199, "link": "https://cardforge.gumroad.com/l/rnrgf"},
 ]
 
 # Podgląd przykładowej karty z trybu WIZJI (mockup: tekst AnKing + prosty diagram SVG).
