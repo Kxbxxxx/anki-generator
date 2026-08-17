@@ -59,7 +59,7 @@ SKLEP_DECKI = [
      "cena": 79, "link": "https://cardforge.gumroad.com/l/jixhif"},
     {"nazwa": "Biochemia — WUM 2 rok (komplet)",
      "opis": "~8200 fiszek! Wszystkie kolokwia i seminaria, Q&A + cloze — największy deck.",
-     "cena": 79, "link": ""},
+     "cena": 79, "link": "https://cardforge.gumroad.com/l/atclr"},
     {"nazwa": "Immunologia — WUM 2 rok (komplet)",
      "opis": "~4000 fiszek, seminaria + egzamin, sam tekst (czysto, bez cudzych obrazków).",
      "cena": 70, "link": ""},
