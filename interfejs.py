@@ -62,7 +62,7 @@ SKLEP_DECKI = [
      "cena": 79, "link": "https://cardforge.gumroad.com/l/atclr"},
     {"nazwa": "Immunologia — WUM 2 rok (komplet)",
      "opis": "~4000 fiszek, seminaria + egzamin, sam tekst (czysto, bez cudzych obrazków).",
-     "cena": 70, "link": ""},
+     "cena": 70, "link": "https://cardforge.gumroad.com/l/fwlqxy"},
     {"nazwa": "Parazytologia — WUM 2 rok (komplet)",
      "opis": "~2200 fiszek + 700 WŁASNYCH zdjęć preparatów (unikat!). Teoria + praktyka.",
      "cena": 70, "link": ""},
