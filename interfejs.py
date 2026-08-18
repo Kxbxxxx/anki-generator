@@ -61,7 +61,7 @@ SKLEP_DECKI = [
      "opis": "~8200 fiszek! Wszystkie kolokwia i seminaria, Q&A + cloze — największy deck.",
      "cena": 79, "link": "https://cardforge.gumroad.com/l/atclr"},
     {"nazwa": "Immunologia — WUM 2 rok (komplet)",
-     "opis": "~4000 fiszek, seminaria + egzamin, sam tekst (czysto, bez cudzych obrazków).",
+     "opis": "~4000 fiszek, seminaria + egzamin, sam tekst.",
      "cena": 70, "link": "https://cardforge.gumroad.com/l/fwlqxy"},
     {"nazwa": "Parazytologia — WUM 2 rok (komplet)",
      "opis": "~2200 fiszek + zdjęcia preparatów. Teoria + praktyka do egzaminu.",
