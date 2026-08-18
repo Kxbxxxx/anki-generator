@@ -64,7 +64,7 @@ SKLEP_DECKI = [
      "opis": "~4000 fiszek, seminaria + egzamin, sam tekst (czysto, bez cudzych obrazków).",
      "cena": 70, "link": "https://cardforge.gumroad.com/l/fwlqxy"},
     {"nazwa": "Parazytologia — WUM 2 rok (komplet)",
-     "opis": "~2200 fiszek + 700 WŁASNYCH zdjęć preparatów (unikat!). Teoria + praktyka.",
+     "opis": "~2200 fiszek + zdjęcia preparatów. Teoria + praktyka do egzaminu.",
      "cena": 70, "link": "https://cardforge.gumroad.com/l/nkztoz"},
     {"nazwa": "🎁 BUNDLE — CAŁY 2 rok WUM (wszystko)",
      "opis": "Fizjo + Biochemia + Immuno + Parazyto… ~20 tys. fiszek. Największa oszczędność.",
