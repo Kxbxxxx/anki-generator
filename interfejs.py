@@ -835,6 +835,8 @@ if generuj:
     env["ANKI_MODEL"] = model_efektywny
     env["ANKI_TRYB"] = TRYB
     env["ANKI_JEZYK"] = ANKI_JEZYK
+    if TRYB_PRODUKCJI:
+        env["ANKI_UKRYJ_KOSZT"] = "1"   # użytkownicy NIE widzą kosztów/tokenów API
     if klucz:
         env["ANTHROPIC_API_KEY"] = klucz
     if opt_ollama:   # tryb lokalny „za darmo": silnik użyje Ollamy zamiast API
@@ -885,7 +887,8 @@ if generuj:
                     pliki_wynikowe.append(os.path.join(KATALOG, kawalek.strip()))
 
     m_licz = re.search(r"Sukces! (\d+) fiszek", pelny_log)
-    m_koszt = re.search(r"Szacowany koszt: \$([\d.]+)", pelny_log)
+    # Koszt pokazujemy TYLKO właścicielowi (lokalnie). Użytkownicy nigdy go nie widzą.
+    m_koszt = None if TRYB_PRODUKCJI else re.search(r"Szacowany koszt: \$([\d.]+)", pelny_log)
     koszt = t["cost_word"].format(c=m_koszt.group(1)) if m_koszt else ""
     st.success(t["created"].format(n=m_licz.group(1) if m_licz else "?", koszt=koszt))
 

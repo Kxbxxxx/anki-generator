@@ -1169,8 +1169,9 @@ def main():
     print(f"Pliki: {nazwa_txt}  oraz  {nazwa_apkg}")
     print("Zaimportuj .apkg w Anki: Plik -> Importuj (podtalie utworzą się same).")
 
-    # Raport zużycia klucza API (koszt).
-    if not tryb_demo and ZUZYCIE["zapytania"] > 0:
+    # Raport zużycia klucza API (koszt) — TYLKO dla właściciela (lokalnie).
+    # W produkcji (ANKI_UKRYJ_KOSZT=1) NIE pokazujemy kosztów/tokenów użytkownikom.
+    if not tryb_demo and ZUZYCIE["zapytania"] > 0 and os.getenv("ANKI_UKRYJ_KOSZT") != "1":
         koszt = ZUZYCIE["wejscie"] * CENA_WEJSCIE + ZUZYCIE["wyjscie"] * CENA_WYJSCIE
         print("\n--- ZUŻYCIE KLUCZA API (ten przebieg) ---")
         print(f"  Zapytań do Claude: {ZUZYCIE['zapytania']}")
