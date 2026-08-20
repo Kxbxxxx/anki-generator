@@ -20,7 +20,7 @@ import os
 import sys
 import hashlib
 
-import fitz  # tak nazywa się biblioteka PyMuPDF po zaimportowaniu
+import pymupdf as fitz  # PyMuPDF — nowa nazwa importu (stary `import fitz` wypisuje ostrzeżenie)
 import genanki
 from anthropic import Anthropic
 from dotenv import load_dotenv

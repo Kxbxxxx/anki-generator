@@ -402,7 +402,7 @@ def szacuj_koszt(plik, model, recenzja, wizja=False):
     try:
         dane = plik.getvalue()
         if plik.name.lower().endswith(".pdf"):
-            import fitz
+            import pymupdf as fitz   # nowa nazwa importu (bez ostrzeżenia o `fitz`)
             d = fitz.open(stream=dane, filetype="pdf")
             jednostki = sum(1 for i in range(len(d))
                             if len(d[i].get_text().strip()) > 200)
