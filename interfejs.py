@@ -90,7 +90,9 @@ PODGLAD_WIZJA_HTML = """
 """
 
 # --- ZABEZPIECZENIA (ochrona przed spalaniem Twojego API) ------------------
-MAX_JEDNOSTKI = 400       # twardy limit rozmiaru 1 dokumentu (chroni przed gigantem)
+MAX_JEDNOSTKI = 200       # twardy limit rozmiaru 1 dokumentu (chroni przed gigantem)
+MAX_KOSZT_USD = 4.0       # twardy limit KOSZTU API 1 dokumentu ($) — powyżej: user musi podzielić
+                          # (żeby jedno wielkie zamówienie nie zjadło całego limitu wydatków naraz)
 DARMOWE_NA_SESJE = 2      # ile darmowych próbek na jedną sesję przeglądarki
 LIMIT_DARMOWYCH_DZIENNIE = 15   # globalny limit darmowych próbek na dobę (wszyscy razem)
 LICZNIK_PLIK = os.path.join(KATALOG, ".licznik_darmowych.json")
@@ -185,6 +187,9 @@ TEKSTY = {
         "too_big": "Dokument jest bardzo duży (**{n}** części, limit {maks}). "
                    "Podziel go na mniejsze pliki albo użyj „Zakres stron” "
                    "w opcjach zaawansowanych.",
+        "too_pricey": "Ten dokument jest za duży, żeby przetworzyć go w całości. "
+                      "Podziel go na mniejsze części albo użyj „Zakres stron” w Opcjach "
+                      "zaawansowanych (np. jeden rozdział na raz).",
         "free_used_session": "Wykorzystałeś darmowe próbki w tej sesji 🙂 "
                              "Kup dostęp powyżej, aby generować dalej.",
         "free_used_today": "Darmowe próbki na dziś się wyczerpały. "
@@ -294,6 +299,9 @@ TEKSTY = {
         "too_big": "This document is very large (**{n}** parts, limit {maks}). "
                    "Split it into smaller files or use the “Page range” "
                    "option under advanced.",
+        "too_pricey": "This document is too large to process in one go. "
+                      "Split it into smaller parts or use “Page range” in Advanced "
+                      "options (e.g. one chapter at a time).",
         "free_used_session": "You've used your free samples in this session 🙂 "
                              "Buy access above to keep generating.",
         "free_used_today": "Free samples for today are used up. "
@@ -450,8 +458,10 @@ def zapisz_uzyty_kod(kod):
         pass
 
 
-def _gumroad_verify(kod, product_id):
-    """Zwraca dict 'purchase' z Gumroada jeśli license key ważny dla product_id, inaczej None."""
+def _gumroad_verify(kod, product_id, increment=False):
+    """Zwraca dict 'purchase' (+ klucz '_uses' = trwały licznik użyć z Gumroada) jeśli license key
+    ważny dla product_id, inaczej None. increment=True TRWALE zwiększa licznik uses po stronie
+    Gumroada (przetrwa restart apki — używamy do jednorazowości kodu)."""
     if not (kod and product_id):
         return None
     try:
@@ -461,47 +471,73 @@ def _gumroad_verify(kod, product_id):
         dane = urllib.parse.urlencode({
             "product_id": product_id,
             "license_key": kod,
-            "increment_uses_count": "false",   # nie zużywamy licznika Gumroada — pilnujemy sami
+            "increment_uses_count": "true" if increment else "false",
         }).encode()
         req = urllib.request.Request(
             "https://api.gumroad.com/v2/licenses/verify", data=dane)
         with urllib.request.urlopen(req, timeout=10) as odp:
             wynik = json.load(odp)
         if wynik.get("success"):
-            return wynik.get("purchase", {}) or {}
+            zakup = wynik.get("purchase", {}) or {}
+            zakup["_uses"] = wynik.get("uses")   # trwały licznik użyć (Gumroad, przetrwa restart)
+            return zakup
     except Exception:
         pass
     return None   # błąd/nieznany kod = None (traktujemy jako nieważny — bezpiecznie)
 
 
-def _kod_zweryfikowany(kod):
-    """True, jeśli kod to ważny kod testowy (CARDFORGE_KODY) LUB license key z Gumroada (1 dokument)."""
-    wazne = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
-    if kod in wazne:
-        return True
-    zakup = _gumroad_verify(kod, os.getenv("GUMROAD_PRODUCT_ID", "").strip())
-    if zakup is None:
-        return False
-    if zakup.get("refunded") or zakup.get("chargebacked") or zakup.get("disputed"):
-        return False   # zwrot/reklamacja → kod nieważny
-    return True
+def _kwota_zaplacona_pln(zakup):
+    """Kwota zapłacona (w zł) z odpowiedzi Gumroada; None gdy nie da się ustalić.
+    Gdy None → NIE blokujemy (fail-open, żeby nigdy nie odrzucić prawdziwego kupującego)."""
+    grosze = zakup.get("price")
+    if grosze is None:
+        return None
+    try:
+        kwota = float(grosze) / 100.0
+        waluta = (zakup.get("currency") or "").lower()
+        if waluta and waluta not in ("pln", "zl", "zł"):
+            kwota *= KURS_USD_PLN   # inna waluta (zwykle USD) → przelicz na zł
+        return kwota
+    except Exception:
+        return None
 
 
-def kod_wazny(kod):
-    """Czy kod odblokowuje płatny dokument. License key jest JEDNORAZOWY (raz użyty = nieważny).
-    Sprawdza kody testowe (CARDFORGE_KODY) oraz prawdziwe license keys z Gumroada."""
+def kod_wazny(kod, cena_pln=None):
+    """Czy kod odblokowuje płatny dokument. Sprawdza po kolei:
+    1) kody testowe właściciela (CARDFORGE_KODY) — bez limitów;
+    2) ważność license key w Gumroadzie (bez zwrotu/reklamacji);
+    3) JEDNORAZOWOŚĆ — trwały licznik `uses` z Gumroada (przetrwa restart apki) + lokalny plik zapasowy;
+    4) KWOTA — zapłacona suma musi pokryć cenę dokumentu (blokuje PWYW-niedopłatę).
+    FAIL-OPEN: gdy czegoś nie da się jednoznacznie ustalić, NIE blokujemy — żeby nigdy nie
+    odrzucić uczciwego kupującego (sufit wydatków w Anthropic i tak jest ostateczną ochroną)."""
     kod = (kod or "").strip()
     if not kod:
         return False
-    if kod in _uzyte_kody():                 # już wykorzystany — jednorazowość
+    testowe = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
+    if kod in testowe:
+        return True                          # kody testowe właściciela — bez limitów
+    if kod in _uzyte_kody():                  # lokalnie oznaczony jako użyty (ta sama sesja apki)
         return False
-    cache = st.session_state.setdefault("_ok_kody", set())
-    if kod in cache:                         # zweryfikowany w tej sesji → nie wołaj API znów
+    cache = st.session_state.setdefault("_ok_kody", {})   # kod -> zapłacono_pln (lub None)
+    if kod in cache:                          # już zweryfikowany w tej sesji → nie wołaj API znów
+        zpl = cache[kod]
+        if cena_pln is not None and zpl is not None and zpl < cena_pln - 1:
+            return False                      # w tej sesji wiadomo już, że zapłacono za mało
         return True
-    if _kod_zweryfikowany(kod):
-        cache.add(kod)
-        return True
-    return False
+    zakup = _gumroad_verify(kod, os.getenv("GUMROAD_PRODUCT_ID", "").strip())
+    if zakup is None:
+        return False                          # nieznany/niezweryfikowany kod = nieważny
+    if zakup.get("refunded") or zakup.get("chargebacked") or zakup.get("disputed"):
+        return False                          # zwrot/reklamacja → kod nieważny
+    uses = zakup.get("_uses")
+    if isinstance(uses, int) and uses >= 1:
+        return False                          # już wykorzystany (trwale, wg Gumroada)
+    zaplacono = _kwota_zaplacona_pln(zakup)
+    if cena_pln is not None and zaplacono is not None and zaplacono < cena_pln - 1:
+        cache[kod] = zaplacono                # zapamiętaj: zapłacono za mało
+        return False
+    cache[kod] = zaplacono                     # OK — zapamiętaj kwotę (do ew. re-oceny przy zmianie ceny)
+    return True
 
 
 def _licznik_dzis():
@@ -631,6 +667,10 @@ if szac:
         st.success(t["price_free"].format(n0=DARMOWE_JEDNOSTKI))
         email_darmo = st.text_input(t["email_label"], help=t["email_help"],
                                     placeholder="ty@student.pl")
+    elif koszt_usd > MAX_KOSZT_USD:
+        # Za duży/drogi dokument → nie pozwalamy zapłacić (jeden gigant nie zablokuje apki).
+        st.error(t["too_pricey"])
+        odblokowane = False
     else:
         st.warning(t["price_paid"].format(n=jednostki, cena=cena_pln))
         if LINK_PLATNOSCI:
@@ -640,7 +680,7 @@ if szac:
             st.link_button(t["pay_button"].format(cena=cena_pln), link_z_cena,
                            use_container_width=True)
         kod = st.text_input(t["code_label"], help=t["code_help"])
-        odblokowane = kod_wazny(kod)
+        odblokowane = kod_wazny(kod, cena_pln)   # sprawdza też, czy zapłacona kwota pokrywa cenę
         if kod and not odblokowane:
             st.error(t["code_bad"])
         elif odblokowane:
@@ -798,6 +838,10 @@ if generuj:
     # OCHRONA 1 — limit rozmiaru: żaden pojedynczy dokument nie spali fortuny.
     if szac and szac[0] > MAX_JEDNOSTKI:
         st.error(t["too_big"].format(n=szac[0], maks=MAX_JEDNOSTKI)); st.stop()
+    # OCHRONA 1b — limit KOSZTU 1 dokumentu: jeden gigant nie może zjeść budżetu naraz
+    # (backstop; płatny dokument już wcześniej blokowany w wycenie). Darmowa próbka jest mała.
+    if TRYB_PRODUKCJI and szac and szac[1] > MAX_KOSZT_USD:
+        st.error(t["too_pricey"]); st.stop()
     # OCHRONA 2 — bramka płatności (produkcja): płatny dokument wymaga kodu.
     if TRYB_PRODUKCJI and szac and not darmowy and not odblokowane:
         st.error(t["locked_stop"]); st.stop()
@@ -877,7 +921,13 @@ if generuj:
     if TRYB_PRODUKCJI and szac and not darmowy and kod.strip():
         _testowe = [k.strip() for k in os.getenv("CARDFORGE_KODY", "").split(",") if k.strip()]
         if kod.strip() not in _testowe:
-            zapisz_uzyty_kod(kod)
+            zapisz_uzyty_kod(kod)                    # lokalny plik (ta sama sesja apki)
+            # + TRWALE zużyj licznik Gumroada (przetrwa restart apki) — best-effort.
+            try:
+                _gumroad_verify(kod.strip(),
+                                os.getenv("GUMROAD_PRODUCT_ID", "").strip(), increment=True)
+            except Exception:
+                pass
 
     pliki_wynikowe = []
     for l in linie:
