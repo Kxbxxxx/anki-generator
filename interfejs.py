@@ -506,10 +506,11 @@ def kod_wazny(kod, cena_pln=None):
     """Czy kod odblokowuje płatny dokument. Sprawdza po kolei:
     1) kody testowe właściciela (CARDFORGE_KODY) — bez limitów;
     2) ważność license key w Gumroadzie (bez zwrotu/reklamacji);
-    3) JEDNORAZOWOŚĆ — trwały licznik `uses` z Gumroada (przetrwa restart apki) + lokalny plik zapasowy;
-    4) KWOTA — zapłacona suma musi pokryć cenę dokumentu (blokuje PWYW-niedopłatę).
-    FAIL-OPEN: gdy czegoś nie da się jednoznacznie ustalić, NIE blokujemy — żeby nigdy nie
-    odrzucić uczciwego kupującego (sufit wydatków w Anthropic i tak jest ostateczną ochroną)."""
+    3) JEDNORAZOWOŚĆ — trwały licznik `uses` z Gumroada (przetrwa restart apki) + lokalny plik zapasowy.
+    UWAGA: NIE sprawdzamy tu zapłaconej kwoty — przy modelu PWYW klient LEGALNIE płaci mniej niż
+    sugerowana cena, więc taki check blokowałby prawdziwych kupujących. Ochronę przed niedopłatą
+    ustawia się MINIMALNĄ CENĄ produktu na Gumroadzie (patrz komentarz przy CENA_MIN_PLN).
+    `cena_pln` zostawione w sygnaturze dla zgodności (nieużywane)."""
     kod = (kod or "").strip()
     if not kod:
         return False
@@ -518,11 +519,8 @@ def kod_wazny(kod, cena_pln=None):
         return True                          # kody testowe właściciela — bez limitów
     if kod in _uzyte_kody():                  # lokalnie oznaczony jako użyty (ta sama sesja apki)
         return False
-    cache = st.session_state.setdefault("_ok_kody", {})   # kod -> zapłacono_pln (lub None)
+    cache = st.session_state.setdefault("_ok_kody", set())
     if kod in cache:                          # już zweryfikowany w tej sesji → nie wołaj API znów
-        zpl = cache[kod]
-        if cena_pln is not None and zpl is not None and zpl < cena_pln - 1:
-            return False                      # w tej sesji wiadomo już, że zapłacono za mało
         return True
     zakup = _gumroad_verify(kod, os.getenv("GUMROAD_PRODUCT_ID", "").strip())
     if zakup is None:
@@ -532,11 +530,7 @@ def kod_wazny(kod, cena_pln=None):
     uses = zakup.get("_uses")
     if isinstance(uses, int) and uses >= 1:
         return False                          # już wykorzystany (trwale, wg Gumroada)
-    zaplacono = _kwota_zaplacona_pln(zakup)
-    if cena_pln is not None and zaplacono is not None and zaplacono < cena_pln - 1:
-        cache[kod] = zaplacono                # zapamiętaj: zapłacono za mało
-        return False
-    cache[kod] = zaplacono                     # OK — zapamiętaj kwotę (do ew. re-oceny przy zmianie ceny)
+    cache.add(kod)
     return True
 
 
