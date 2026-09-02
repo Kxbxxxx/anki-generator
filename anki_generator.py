@@ -910,7 +910,7 @@ def zbuduj_talie_cloze(fiszki_z_temat):
 # ---------------------------------------------------------------------------
 
 def main():
-    global TALIA_RODZIC
+    global TALIA_RODZIC, TRYB_WIZJA
     # Rozpoznajemy flagi i odfiltrowujemy je od nazwy pliku.
     flagi = {"--demo", "--cloze", "--recenzja", "--slajdy"}
     tryb_demo = "--demo" in sys.argv
@@ -960,6 +960,25 @@ def main():
         print(f"Nie znaleziono pliku: {sciezka_pdf}")
         sys.exit(1)
 
+    # ZDJĘCIE (.png/.jpg/...) → konwertujemy na 1-stronicowy PDF i włączamy TRYB WIZJI,
+    # żeby użyć istniejącej ścieżki (Claude odczyta treść z obrazu + dołączy go do karty).
+    if sciezka_pdf.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff")):
+        import tempfile as _tmp
+        TRYB_WIZJA = True
+        _stem = os.path.splitext(os.path.basename(sciezka_pdf))[0]
+        try:
+            _img = fitz.open(sciezka_pdf)
+            _pdf_bytes = _img.convert_to_pdf()
+            _img.close()
+            _pdf_path = os.path.join(_tmp.gettempdir(), _stem + ".pdf")
+            with open(_pdf_path, "wb") as _f:
+                _f.write(_pdf_bytes)
+            sciezka_pdf = _pdf_path
+            print("🖼️  Wejście: zdjęcie → tryb wizji (Claude odczyta treść i dołączy obraz).")
+        except Exception as _e:
+            print(f"Nie udało się wczytać zdjęcia: {_e}")
+            sys.exit(1)
+
     # W trybie normalnym potrzebujemy klucza API. W demo - nie.
     klient = None
     if tryb_demo:
@@ -990,6 +1009,7 @@ def main():
     nazwa_zrodla = os.path.splitext(os.path.basename(sciezka_pdf))[0]
 
     jest_docx = sciezka_pdf.lower().endswith(".docx")
+    jest_txt = sciezka_pdf.lower().endswith(".txt")
     mapa_struktury, ma_strukture = {}, False
     strony = []
 
@@ -1015,6 +1035,18 @@ def main():
                     f"fragment {idx}", [])
             for fiszka in fiszki:
                 wszystkie_fiszki.append((fiszka, None, temat_bazy, nazwa_zrodla))
+    elif jest_txt:
+        # === TRYB TEKSTU (.txt: np. transkrypcja YouTube → fiszki) ===
+        print("📝 Wejście: tekst (np. transkrypcja YouTube) → fiszki.")
+        with open(sciezka_pdf, encoding="utf-8", errors="ignore") as _f:
+            _tekst_all = _f.read()
+        _chunki = podziel_na_chunki(_tekst_all, ZNAKI_NA_CHUNK)
+        if od is not None:                       # --strony ogranicza tu ZAKRES FRAGMENTÓW
+            _chunki = _chunki[od - 1:do]
+        # Budujemy „pseudo-strony", żeby użyć istniejącej pętli (ścieżka tekstowa, bez wizji).
+        strony = [{"numer": _i, "tekst": _ch, "obrazki": [], "render_png": None}
+                  for _i, _ch in enumerate(_chunki, start=1)]
+        print(f"Fragmentów do przerobienia: {len(strony)}")
     else:
         # === TRYB DOKUMENTU (PDF: struktura + strony) ===
         mapa_struktury, ma_strukture = wykryj_mape_stron(sciezka_pdf)

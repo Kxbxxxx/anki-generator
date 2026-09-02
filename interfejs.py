@@ -129,9 +129,15 @@ TEKSTY = {
         "lang_auto": "Auto (jak dokument)",
         "cost_note": "💡 Generowanie płatne jest z Twojego klucza (od zużycia). "
                      "Tryb demo jest darmowy.",
-        "upload_hint": "Wgraj swój skrypt/wykład (PDF) albo bazę pytań (.docx) — "
-                       "materiał, którego nie znajdziesz w gotowych deckach. "
+        "upload_hint": "Wgraj skrypt/wykład (PDF), bazę pytań (.docx) albo ZDJĘCIE notatek/slajdu "
+                       "(.jpg/.png) — materiał, którego nie ma w gotowych deckach. "
                        "Program sam wykryje strukturę i tematy.",
+        "yt_label": "▶️ …albo wklej link do filmu na YouTube",
+        "yt_ph": "https://youtube.com/watch?v=…",
+        "yt_help": "Zrobimy fiszki z transkrypcji filmu (np. wykładu). Działa, gdy film ma napisy.",
+        "yt_ok": "▶️ Pobrano transkrypcję ({n} znaków) — kliknij „Generuj fiszki”.",
+        "yt_bad": "Nie udało się użyć tego filmu: {powod}. Spróbuj inny film (z napisami) "
+                  "albo wgraj plik.",
         "subject": "Nazwa przedmiotu (talia)",
         "subject_ph": "np. Mikrobiologia",
         "recenzja": "Recenzent", "recenzja_help": "Usuwa duplikaty i słabe fiszki.",
@@ -241,9 +247,14 @@ TEKSTY = {
         "lang_auto": "Auto (match document)",
         "cost_note": "💡 Generation is billed from your key (pay per use). "
                      "Demo mode is free.",
-        "upload_hint": "Upload your notes/lecture (PDF) or a question bank (.docx) — "
-                       "the material you won't find in premade decks. "
+        "upload_hint": "Upload notes/lecture (PDF), a question bank (.docx) or a PHOTO of notes/slide "
+                       "(.jpg/.png) — material you won't find in premade decks. "
                        "The app detects structure and topics automatically.",
+        "yt_label": "▶️ …or paste a YouTube video link",
+        "yt_ph": "https://youtube.com/watch?v=…",
+        "yt_help": "We'll make flashcards from the video's transcript (e.g. a lecture). Works when the video has captions.",
+        "yt_ok": "▶️ Transcript fetched ({n} chars) — click “Generate flashcards”.",
+        "yt_bad": "Couldn't use this video: {powod}. Try another (with captions) or upload a file.",
         "subject": "Subject name (deck)",
         "subject_ph": "e.g. Microbiology",
         "recenzja": "Reviewer", "recenzja_help": "Removes duplicates and weak cards.",
@@ -410,12 +421,18 @@ def szacuj_koszt(plik, model, recenzja, wizja=False):
     """Zwraca (liczba_części, koszt_usd) — przybliżony koszt generowania."""
     try:
         dane = plik.getvalue()
-        if plik.name.lower().endswith(".pdf"):
+        nazwa = plik.name.lower()
+        if nazwa.endswith(".pdf"):
             import pymupdf as fitz   # nowa nazwa importu (bez ostrzeżenia o `fitz`)
             d = fitz.open(stream=dane, filetype="pdf")
             jednostki = sum(1 for i in range(len(d))
                             if len(d[i].get_text().strip()) > 200)
             d.close()
+        elif nazwa.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff")):
+            jednostki = 1        # jedno zdjęcie = 1 jednostka
+            wizja = True         # zdjęcie zawsze przez tryb wizji
+        elif nazwa.endswith(".txt"):
+            jednostki = max(1, len(dane) // 3500)   # tekst/transkrypcja wg długości
         else:
             import io
             import docx
@@ -594,9 +611,84 @@ def email_ok(email):
     return bool(re.match(r"[^@\s]+@[^@\s]+\.[^@\s]+", (email or "").strip()))
 
 
+# --- YOUTUBE → transkrypcja → fiszki --------------------------------------
+def _youtube_id(url):
+    """Wyciąga 11-znakowe ID filmu z linku YouTube (różne formaty) lub None."""
+    if not url:
+        return None
+    wzory = [r"(?:v=|/embed/|youtu\.be/|/v/|/shorts/|/live/)([A-Za-z0-9_-]{11})",
+             r"^([A-Za-z0-9_-]{11})$"]
+    for w in wzory:
+        m = re.search(w, url.strip())
+        if m:
+            return m.group(1)
+    return None
+
+
+def pobierz_transkrypcje_yt(url):
+    """Pobiera transkrypcję filmu YouTube jako czysty tekst. Zwraca (tekst, blad_lub_None)."""
+    vid = _youtube_id(url)
+    if not vid:
+        return None, "nie rozpoznano linku YouTube"
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+
+        def _seg(s):
+            return s.get("text", "") if isinstance(s, dict) else getattr(s, "text", "")
+
+        if hasattr(YouTubeTranscriptApi, "get_transcript"):     # STARE API (<1.0): classmethody
+            try:
+                segmenty = YouTubeTranscriptApi.get_transcript(vid, languages=["pl", "en"])
+            except Exception:
+                lista = YouTubeTranscriptApi.list_transcripts(vid)   # dowolna dostępna
+                segmenty = next(iter(lista)).fetch()
+        else:                                                    # NOWE API (>=1.0): instancja
+            api = YouTubeTranscriptApi()
+            try:
+                segmenty = api.fetch(vid, languages=["pl", "en"])
+            except Exception:
+                segmenty = next(iter(api.list(vid))).fetch()     # dowolna dostępna
+
+        tekst = " ".join(_seg(s) for s in segmenty).replace("\n", " ").strip()
+        if len(tekst) < 100:
+            return None, "film nie ma użytecznej transkrypcji"
+        return tekst, None
+    except Exception as e:
+        return None, f"nie udało się pobrać transkrypcji ({type(e).__name__})"
+
+
+class _PlikTekstowy:
+    """Udaje wgrany plik (.txt), żeby reszta przepływu (wycena, silnik) działała bez zmian."""
+    def __init__(self, nazwa, tekst):
+        self.name = nazwa
+        self._b = tekst.encode("utf-8")
+
+    def getvalue(self):
+        return self._b
+
+    def getbuffer(self):
+        return self._b
+
+
 # --- FORMULARZ -------------------------------------------------------------
-plik = st.file_uploader("upload", type=["pdf", "docx"], label_visibility="collapsed")
+plik = st.file_uploader("upload", type=["pdf", "docx", "png", "jpg", "jpeg", "webp"],
+                        label_visibility="collapsed")
 st.markdown(f'<div class="panel-hint">{t["upload_hint"]}</div>', unsafe_allow_html=True)
+
+# Alternatywa dla pliku: link YouTube → fiszki z transkrypcji (gdy nie wgrano pliku).
+yt_url = st.text_input(t["yt_label"], placeholder=t["yt_ph"], help=t["yt_help"])
+if yt_url.strip() and plik is None:
+    _yt_cache = st.session_state.setdefault("_yt_cache", {})
+    _yt_key = yt_url.strip()
+    if _yt_key not in _yt_cache:                       # cache per link (nie pobieraj co rerun)
+        _yt_cache[_yt_key] = pobierz_transkrypcje_yt(yt_url)
+    _yt_txt, _yt_blad = _yt_cache[_yt_key]
+    if _yt_txt:
+        plik = _PlikTekstowy("youtube_transkrypcja.txt", _yt_txt)
+        st.success(t["yt_ok"].format(n=len(_yt_txt)))
+    else:
+        st.warning(t["yt_bad"].format(powod=_yt_blad))
+
 if TRYB_PRODUKCJI:
     st.info(t["prod_note"])
 

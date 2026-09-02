@@ -8,3 +8,4 @@ python-dotenv    # bezpieczne wczytanie klucza API z pliku .env
 python-docx      # czytanie baz pytań w formacie .docx
 streamlit        # graficzny interfejs (GUI) uruchamiany w przeglądarce
 pandas           # edytowalna tabela kart w podglądzie
+youtube-transcript-api   # transkrypcje filmów YouTube → fiszki
