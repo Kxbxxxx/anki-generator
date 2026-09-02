@@ -210,6 +210,7 @@ TEKSTY = {
         "help_intro": "Masz pytanie? Zapytaj — pomogę z generowaniem, płatnością i importem do Anki.",
         "help_placeholder": "Napisz pytanie…",
         "help_send": "Wyślij",
+        "help_wait": "Asystent pisze odpowiedź…",
         "help_limit": "Wykorzystałeś limit pytań w tej sesji. Odśwież stronę, aby zapytać więcej.",
         "help_error": "Przepraszam, chwilowy problem z asystentem. Spróbuj ponownie za chwilę.",
         "sklep_tytul": "🛒 Gotowe decki WUM (2 rok)",
@@ -327,6 +328,7 @@ TEKSTY = {
         "help_intro": "Got a question? Ask — I'll help with generating, payment and importing to Anki.",
         "help_placeholder": "Type your question…",
         "help_send": "Send",
+        "help_wait": "Assistant is typing…",
         "help_limit": "You've reached the question limit for this session. Refresh to ask more.",
         "help_error": "Sorry, a temporary problem with the assistant. Please try again shortly.",
         "sklep_tytul": "🛒 Ready-made decks (WUM year 2)",
@@ -1181,7 +1183,8 @@ with st.expander(t["help_expander"]):
         else:
             _hist.append({"role": "user", "content": _pyt.strip()[:1000]})
             try:
-                _odp = odpowiedz_wsparcia(_hist[-8:], L)
+                with st.spinner(t["help_wait"]):
+                    _odp = odpowiedz_wsparcia(_hist[-8:], L)
             except Exception:
                 _odp = t["help_error"]
             _hist.append({"role": "assistant", "content": _odp})
