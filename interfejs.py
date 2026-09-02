@@ -91,8 +91,9 @@ PODGLAD_WIZJA_HTML = """
 
 # --- ZABEZPIECZENIA (ochrona przed spalaniem Twojego API) ------------------
 MAX_JEDNOSTKI = 200       # twardy limit rozmiaru 1 dokumentu (chroni przed gigantem)
-MAX_KOSZT_USD = 4.0       # twardy limit KOSZTU API 1 dokumentu ($) — powyżej: user musi podzielić
-                          # (żeby jedno wielkie zamówienie nie zjadło całego limitu wydatków naraz)
+MAX_KOSZT_USD = 1.5       # twardy limit KOSZTU API 1 dokumentu ($ ≈ 6 zł) — powyżej: user musi podzielić.
+                          # Dobrany tak, że NAWET gdy ktoś zapłaci minimum (8 zł) za największy dozwolony
+                          # dokument, koszt (~6 zł) < wpływ netto → nigdy nie tracisz. Większe pliki = dziel.
 DARMOWE_NA_SESJE = 2      # ile darmowych próbek na jedną sesję przeglądarki
 LIMIT_DARMOWYCH_DZIENNIE = 15   # globalny limit darmowych próbek na dobę (wszyscy razem)
 LICZNIK_PLIK = os.path.join(KATALOG, ".licznik_darmowych.json")
