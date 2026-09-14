@@ -121,9 +121,14 @@ def _dodatek_trybu():
 
 # Instrukcja przypisania tematu - doklejana na końcu promptów generujących.
 INSTRUKCJA_TEMATU = (
-    "\n\nPodaj też pole 'temat': krótka (2–4 słowa) nazwa tematu tego fragmentu, "
-    "w JĘZYKU materiału (np. rozdział/zagadnienie). Gdy fragment jest ogólny — "
-    "użyj sensownej ogólnej nazwy."
+    "\n\nPodaj też pole 'temat' jako HIERARCHIĘ w formacie 'Dział nadrzędny::Konkretny temat' "
+    "(dwa dwukropki '::' jako separator poziomów), w JĘZYKU materiału. "
+    "Poziom 1 = szeroki DZIAŁ przedmiotu (np. dla patomorfologii: 'Zaburzenia krążenia', "
+    "'Zapalenia', 'Nowotwory', 'Patologia serca', 'Patologia nerek', 'Patologia skóry' itd.). "
+    "Poziom 2 = KONKRETNE zagadnienie tego fragmentu (2–4 słowa, np. 'Zakrzepica', 'Zawał', "
+    "'Miażdżyca'). Przykład: 'Zaburzenia krążenia::Zakrzepica'. "
+    "Gdy fragment jest ogólny dla całego działu — podaj sam dział (jeden poziom). "
+    "Bądź KONSEKWENTNY: te same działy nazywaj identycznie w różnych fragmentach."
 )
 
 # Instrukcja pola 'notatka' (kontekst) - doklejana na końcu promptów.
@@ -454,9 +459,14 @@ def podziel_na_chunki(tekst, maks_znakow):
 # ---------------------------------------------------------------------------
 
 def popraw_temat(temat):
-    """Czyści dowolny temat zwrócony przez model; pusty → 'Ogólne'."""
-    t = (temat or "").replace("::", " - ").strip().rstrip(":").strip()
-    return t if t else "Ogólne"
+    """Czyści temat zwrócony przez model; pusty → 'Ogólne'.
+    ZACHOWUJE hierarchię 'Dział::Temat' ('::' = separator poziomów podtalii w Anki),
+    czyszcząc każdy poziom osobno. Maks. 3 poziomy (żeby nie robić absurdalnie głębokich talii)."""
+    if not temat:
+        return "Ogólne"
+    poziomy = [p.strip().rstrip(":").strip() for p in str(temat).split("::")]
+    poziomy = [p for p in poziomy if p][:3]   # usuń puste, ogranicz do 3 poziomów
+    return "::".join(poziomy) if poziomy else "Ogólne"
 
 
 # --- Licznik zużycia API (żeby raportować, ile kosztuje generowanie) ---
