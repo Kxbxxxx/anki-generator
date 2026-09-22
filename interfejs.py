@@ -59,6 +59,13 @@ SKLEP_DECKI = [
     {"nazwa": "Parazytologia — WUM 2 rok (komplet)",
      "opis": "~2200 fiszek + zdjęcia preparatów. Teoria + praktyka do egzaminu.",
      "cena": 70, "link": "https://cardforge.gumroad.com/l/nkztoz"},
+    # --- 3 ROK --- (wklej `link` Gumroad po utworzeniu produktu; puste = „wkrótce")
+    {"nazwa": "Patomorfologia — WUM 3 rok (komplet)",
+     "opis": "~8300 fiszek ze skryptu, ułożone wg programu, zagnieżdżone podtalie. Styl AnKing.",
+     "cena": 89, "link": ""},
+    {"nazwa": "Mikrobiologia — WUM 3 rok (komplet)",
+     "opis": "~3000 fiszek: drobnoustroje, antybiotyki, wirusy + zakażenia narządowe, wg syllabusu. Kolorowe.",
+     "cena": 79, "link": ""},
     {"nazwa": "🎁 BUNDLE — CAŁY 2 rok WUM (wszystko)",
      "opis": "Fizjo + Biochemia + Immuno + Parazyto… ~20 tys. fiszek. Największa oszczędność.",
      "cena": 199, "link": "https://cardforge.gumroad.com/l/rnrgf"},
@@ -201,6 +208,10 @@ TEKSTY = {
                              "Kup dostęp powyżej, aby generować dalej.",
         "free_used_today": "Darmowe próbki na dziś się wyczerpały. "
                            "Wróć jutro albo kup dostęp powyżej.",
+        "free_left": "🟢 Darmowe próbki dostępne dziś: {n}/{maks} (reset o północy).",
+        "free_left_low": "⏳ Zostały już tylko {n}/{maks} darmowe próbki na dziś — łap póki są!",
+        "free_out_today": "🔴 Darmowe próbki na dziś wyczerpane (limit {maks}/dobę, reset o północy). "
+                          "Wróć jutro — albo sprawdź gotowe decki niżej 👇",
         "email_label": "📧 Twój e-mail (żeby odebrać darmową próbkę)",
         "email_help": "Jedna darmowa próbka na e-mail — potem płatne. Nie wysyłamy spamu.",
         "email_bad": "Podaj poprawny adres e-mail, żeby odebrać darmową próbkę.",
@@ -319,6 +330,10 @@ TEKSTY = {
                              "Buy access above to keep generating.",
         "free_used_today": "Free samples for today are used up. "
                            "Come back tomorrow or buy access above.",
+        "free_left": "🟢 Free samples left today: {n}/{maks} (resets at midnight).",
+        "free_left_low": "⏳ Only {n}/{maks} free samples left today — grab one while they last!",
+        "free_out_today": "🔴 Free samples for today are used up (limit {maks}/day, resets at midnight). "
+                          "Come back tomorrow — or check the ready-made decks below 👇",
         "email_label": "📧 Your email (to claim the free sample)",
         "email_help": "One free sample per email — then it's paid. No spam.",
         "email_bad": "Enter a valid email to claim the free sample.",
@@ -753,9 +768,20 @@ if szac:
         # Tryb lokalny/deweloperski: pokaż tylko szacowany koszt API (jak dotąd).
         st.caption(t["estimate"].format(n=jednostki, c=f"{koszt_usd:.2f}"))
     elif darmowy:
-        st.success(t["price_free"].format(n0=DARMOWE_JEDNOSTKI))
-        email_darmo = st.text_input(t["email_label"], help=t["email_help"],
-                                    placeholder="ty@student.pl")
+        # Widoczny dzienny licznik darmowych próbek (scarcity + transparentność).
+        pozostalo = max(0, LIMIT_DARMOWYCH_DZIENNIE - darmowe_dzis())
+        if pozostalo <= 0:
+            # Wyczerpane na dziś → jasny komunikat, bez ślepej uliczki (gotowe decki niżej).
+            # Zostawiamy darmowy=True: przy kliknięciu „Generuj" OCHRONA 3 pokaże „wróć jutro".
+            st.error(t["free_out_today"].format(maks=LIMIT_DARMOWYCH_DZIENNIE))
+        else:
+            st.success(t["price_free"].format(n0=DARMOWE_JEDNOSTKI))
+            if pozostalo <= 5:
+                st.warning(t["free_left_low"].format(n=pozostalo, maks=LIMIT_DARMOWYCH_DZIENNIE))
+            else:
+                st.caption(t["free_left"].format(n=pozostalo, maks=LIMIT_DARMOWYCH_DZIENNIE))
+            email_darmo = st.text_input(t["email_label"], help=t["email_help"],
+                                        placeholder="ty@student.pl")
     elif koszt_usd > MAX_KOSZT_USD:
         # Za duży/drogi dokument → nie pozwalamy zapłacić (jeden gigant nie zablokuje apki).
         st.error(t["too_pricey"])
@@ -936,17 +962,18 @@ if generuj:
         st.error(t["locked_stop"]); st.stop()
     # OCHRONA 3 — limity darmowych próbek (produkcja): anty-spam Twojego API.
     if TRYB_PRODUKCJI and szac and darmowy:
-        # 3a. Bramka e-mail: 1 darmowa próbka na e-mail (na zawsze).
+        # 3a. Dzienny globalny cap NAJPIERW — po wyczerpaniu jasny komunikat „wróć jutro".
+        if darmowe_dzis() >= LIMIT_DARMOWYCH_DZIENNIE:
+            st.warning(t["free_out_today"].format(maks=LIMIT_DARMOWYCH_DZIENNIE)); st.stop()
+        # 3b. Bramka e-mail: 1 darmowa próbka na e-mail (na zawsze).
         email_norm = (email_darmo or "").strip().lower()
         if not email_ok(email_norm):
             st.warning(t["email_bad"]); st.stop()
         if email_uzyl_darmo(email_norm):
             st.warning(t["email_used"]); st.stop()
-        # 3b. Backstopy globalne (nawet gdyby ktoś podmieniał e-maile).
+        # 3c. Backstop na sesję przeglądarki.
         if st.session_state.get("darmowe_uzyte", 0) >= DARMOWE_NA_SESJE:
             st.warning(t["free_used_session"]); st.stop()
-        if darmowe_dzis() >= LIMIT_DARMOWYCH_DZIENNIE:
-            st.warning(t["free_used_today"]); st.stop()
     # Klucz API: w produkcji jest na serwerze (env); w trybie Ollama nie jest potrzebny.
     if not TRYB_PRODUKCJI and not opt_demo and not opt_ollama and not klucz \
             and not os.path.exists(os.path.join(KATALOG, ".env")):
