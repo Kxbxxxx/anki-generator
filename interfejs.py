@@ -62,10 +62,10 @@ SKLEP_DECKI = [
     # --- 3 ROK --- (wklej `link` Gumroad po utworzeniu produktu; puste = „wkrótce")
     {"nazwa": "Patomorfologia — WUM 3 rok (komplet)",
      "opis": "~8300 fiszek ze skryptu, ułożone wg programu, zagnieżdżone podtalie. Styl AnKing.",
-     "cena": 89, "link": ""},
+     "cena": 89, "link": "https://cardforge.gumroad.com/l/ipfytw"},
     {"nazwa": "Mikrobiologia — WUM 3 rok (komplet)",
      "opis": "~3000 fiszek: drobnoustroje, antybiotyki, wirusy + zakażenia narządowe, wg syllabusu. Kolorowe.",
-     "cena": 79, "link": ""},
+     "cena": 79, "link": "https://cardforge.gumroad.com/l/dwbhp"},
     {"nazwa": "🎁 BUNDLE — CAŁY 2 rok WUM (wszystko)",
      "opis": "Fizjo + Biochemia + Immuno + Parazyto… ~20 tys. fiszek. Największa oszczędność.",
      "cena": 199, "link": "https://cardforge.gumroad.com/l/rnrgf"},
