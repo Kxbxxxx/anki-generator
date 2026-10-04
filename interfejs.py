@@ -113,10 +113,10 @@ TEKSTY = {
         "title": f"{MARKA} — fiszki z Twojego skryptu i bazy pytań",
         "slogan": "Twój skrypt i baza pytań → gotowe fiszki Anki. "
                   "To, czego nie ma w gotowych deckach.",
-        "trust_line": "🩺 Zrobione przez studenta WUM — pod egzaminy na naszej uczelni. "
-                      "Na materiał, którego AnKing i inne decki nie mają (skrypty, wykłady, bazy pytań).",
+        "trust_line": "🩺 Pod Twoje egzaminy — na materiał, którego AnKing i inne decki "
+                      "nie mają (skrypty, wykłady, bazy pytań).",
         "chips": ["📚 Z Twojego skryptu", "📝 Baza pytań → fiszki",
-                  "🎨 Styl AnKing", "🩺 Od studenta medycyny"],
+                  "🎨 Styl AnKing", "🩺 Pod egzaminy na studiach"],
         "settings": "Ustawienia",
         "language": "Język / Language",
         "api_key": "Klucz API",
@@ -225,9 +225,8 @@ TEKSTY = {
         "help_limit": "Wykorzystałeś limit pytań w tej sesji. Odśwież stronę, aby zapytać więcej.",
         "help_error": "Przepraszam, chwilowy problem z asystentem. Spróbuj ponownie za chwilę.",
         "sklep_tytul": "🛒 Gotowe decki WUM (2 rok)",
-        "sklep_opis": "Gotowe decki zrobione przez studenta WUM — pod egzaminy na naszej "
-                      "uczelni. Sprawdzone karty, wszystkie kolokwia, styl AnKing. Nie chcesz "
-                      "robić fiszek sam? Kup gotowy komplet.",
+        "sklep_opis": "Gotowe decki pod egzaminy — sprawdzone karty, wszystkie kolokwia, "
+                      "styl AnKing. Nie chcesz robić fiszek sam? Kup gotowy komplet.",
         "sklep_kup": "💳 Kup",
         "sklep_wkrotce": "Wkrótce",
         "footer": f"{MARKA} · fiszki Anki z każdego dokumentu",
@@ -236,10 +235,10 @@ TEKSTY = {
         "title": f"{MARKA} — flashcards from your notes & question banks",
         "slogan": "Your lecture notes and question banks → ready Anki flashcards. "
                   "The stuff that isn't in premade decks.",
-        "trust_line": "🩺 Built by a WUM med student — for our university's exams. "
-                      "For material AnKing and other decks don't cover (notes, lectures, question banks).",
+        "trust_line": "🩺 Built for your exams — for material AnKing and other decks "
+                      "don't cover (notes, lectures, question banks).",
         "chips": ["📚 From your notes", "📝 Question bank → cards",
-                  "🎨 AnKing style", "🩺 By a med student"],
+                  "🎨 AnKing style", "🩺 Built for exams"],
         "settings": "Settings",
         "language": "Language / Język",
         "api_key": "API key",
@@ -347,9 +346,8 @@ TEKSTY = {
         "help_limit": "You've reached the question limit for this session. Refresh to ask more.",
         "help_error": "Sorry, a temporary problem with the assistant. Please try again shortly.",
         "sklep_tytul": "🛒 Ready-made decks (WUM year 2)",
-        "sklep_opis": "Ready decks made by a WUM student — for our university's exams. "
-                      "Verified cards, all exams, AnKing style. Don't want to make cards "
-                      "yourself? Buy a complete deck.",
+        "sklep_opis": "Ready decks built for exams — verified cards, all exams, AnKing "
+                      "style. Don't want to make cards yourself? Buy a complete deck.",
         "sklep_kup": "💳 Buy",
         "sklep_wkrotce": "Soon",
         "footer": f"{MARKA} · Anki flashcards from any document",
