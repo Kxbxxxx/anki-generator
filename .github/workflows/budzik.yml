@@ -1,0 +1,31 @@
+# Budzik CardForge: co 4 godziny otwiera apkę w prawdziwej przeglądarce,
+# żeby Streamlit Community Cloud jej nie usypiał (zwykły ping nie wystarcza).
+name: Budzik CardForge
+
+on:
+  schedule:
+    - cron: "17 */4 * * *"   # co 4 h (czas UTC)
+  workflow_dispatch:          # ręczne uruchomienie: zakładka Actions → Run workflow
+
+jobs:
+  obudz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Zainstaluj Playwright + Chromium
+        run: |
+          pip install playwright==1.47.0
+          python -m playwright install --with-deps chromium
+      - name: Otwórz apkę
+        run: python narzedzia/budzik.py
+      - name: Zrzut ekranu przy błędzie
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: budzik-blad
+          path: budzik_blad.png
+          if-no-files-found: ignore
