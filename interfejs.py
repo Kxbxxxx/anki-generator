@@ -193,8 +193,9 @@ TEKSTY = {
         "code_ok": "✅ Odblokowane! Możesz generować.",
         "locked_stop": "Dokument płatny — wpisz poprawny kod dostępu "
                        "(albo wgraj mniejszy plik, który jest za darmo).",
-        "prod_note": "🎁 Mały dokument = za darmo. Większy = drobna opłata "
-                     "(płacisz raz, za swój plik).",
+        "prod_note": "🎁 Plik do {n0} stron = ZA DARMO (bez karty, wystarczy e-mail). "
+                     "Większy = drobna opłata (płacisz raz, za swój plik).",
+        "free_badge": "🎁 Do {n0} stron ZA DARMO — bez karty, bez rejestracji",
         "too_large_warn": "⚠️ Duży dokument (**{n}** stron) — cena rośnie z rozmiarem. "
                           "Taniej: wgraj jeden rozdział/temat albo użyj „Zakres stron” "
                           "w Opcjach zaawansowanych.",
@@ -224,7 +225,7 @@ TEKSTY = {
         "help_wait": "Asystent pisze odpowiedź…",
         "help_limit": "Wykorzystałeś limit pytań w tej sesji. Odśwież stronę, aby zapytać więcej.",
         "help_error": "Przepraszam, chwilowy problem z asystentem. Spróbuj ponownie za chwilę.",
-        "sklep_tytul": "🛒 Gotowe decki WUM (2 rok)",
+        "sklep_tytul": "🛒 Gotowe decki WUM (2 i 3 rok)",
         "sklep_opis": "Gotowe decki pod egzaminy — sprawdzone karty, wszystkie kolokwia, "
                       "styl AnKing. Nie chcesz robić fiszek sam? Kup gotowy komplet.",
         "sklep_kup": "💳 Kup",
@@ -314,8 +315,9 @@ TEKSTY = {
         "code_ok": "✅ Unlocked! You can generate now.",
         "locked_stop": "Paid document — enter a valid access code "
                        "(or upload a smaller file, which is free).",
-        "prod_note": "🎁 Small document = free. Larger = a small one-off fee "
-                     "(you pay once, for your file).",
+        "prod_note": "🎁 Files up to {n0} pages = FREE (no card, just an email). "
+                     "Larger = a small one-off fee (you pay once, for your file).",
+        "free_badge": "🎁 Up to {n0} pages FREE — no card, no sign-up",
         "too_large_warn": "⚠️ Large document (**{n}** pages) — price grows with size. "
                           "Cheaper: upload one chapter/topic or use “Page range” "
                           "in advanced options.",
@@ -345,7 +347,7 @@ TEKSTY = {
         "help_wait": "Assistant is typing…",
         "help_limit": "You've reached the question limit for this session. Refresh to ask more.",
         "help_error": "Sorry, a temporary problem with the assistant. Please try again shortly.",
-        "sklep_tytul": "🛒 Ready-made decks (WUM year 2)",
+        "sklep_tytul": "🛒 Ready-made decks (WUM years 2–3)",
         "sklep_opis": "Ready decks built for exams — verified cards, all exams, AnKing "
                       "style. Don't want to make cards yourself? Buy a complete deck.",
         "sklep_kup": "💳 Buy",
@@ -401,6 +403,7 @@ st.markdown(f"""
 <div class="hero">
   <h1>⚡ {MARKA}</h1>
   <p>{t["slogan"]}</p>
+  <p style="display:inline-block;margin:.9rem auto .2rem;padding:.45rem 1rem;border-radius:999px;background:rgba(34,197,94,.15);color:#4ade80;font-weight:700;font-size:1.05rem;">{t["free_badge"].format(n0=DARMOWE_JEDNOSTKI)}</p>
   <div class="chips">{chipy}</div>
   <p style="color:#7b8494;font-size:.88rem;margin:.9rem auto 0;max-width:560px;">{t["trust_line"]}</p>
 </div>
@@ -705,7 +708,7 @@ if yt_url.strip() and plik is None:
         st.warning(t["yt_bad"].format(powod=_yt_blad))
 
 if TRYB_PRODUKCJI:
-    st.info(t["prod_note"])
+    st.info(t["prod_note"].format(n0=DARMOWE_JEDNOSTKI))
 
 przedmiot = st.text_input(t["subject"], placeholder=t["subject_ph"])
 
