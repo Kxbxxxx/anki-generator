@@ -47,28 +47,27 @@ WSPARCIE_LIMIT = 12      # ile pytań do wsparcia na sesję (ochrona kosztu)
 # --- 🛒 SKLEP Z GOTOWYMI DECKAMI (edytuj listę; `link` = URL produktu Gumroad) ---
 # Sklep pokazuje się klientom dopiero gdy przynajmniej jeden deck ma wypełniony `link`.
 SKLEP_DECKI = [
-    {"nazwa": "Fizjologia — WUM 2 rok (komplet)",
-     "opis": "~4000 fiszek, wszystkie kolokwia, Q&A + cloze, ryciny, styl AnKing.",
-     "cena": 79, "link": "https://cardforge.gumroad.com/l/jixhif"},
-    {"nazwa": "Biochemia — WUM 2 rok (komplet)",
-     "opis": "~8200 fiszek! Wszystkie kolokwia i seminaria, Q&A + cloze — największy deck.",
-     "cena": 79, "link": "https://cardforge.gumroad.com/l/atclr"},
-    {"nazwa": "Immunologia — WUM 2 rok (komplet)",
-     "opis": "~4000 fiszek, seminaria + egzamin, sam tekst.",
-     "cena": 70, "link": "https://cardforge.gumroad.com/l/fwlqxy"},
-    {"nazwa": "Parazytologia — WUM 2 rok (komplet)",
-     "opis": "~2200 fiszek + zdjęcia preparatów. Teoria + praktyka do egzaminu.",
-     "cena": 70, "link": "https://cardforge.gumroad.com/l/nkztoz"},
-    # --- 3 ROK --- (wklej `link` Gumroad po utworzeniu produktu; puste = „wkrótce")
-    {"nazwa": "Patomorfologia — WUM 3 rok (komplet)",
-     "opis": "~8300 fiszek ze skryptu, ułożone wg programu, zagnieżdżone podtalie. Styl AnKing.",
-     "cena": 119, "link": "https://cardforge.gumroad.com/l/ipfytw"},
-    {"nazwa": "Mikrobiologia — WUM 3 rok (komplet)",
-     "opis": "~3000 fiszek: drobnoustroje, antybiotyki, wirusy + zakażenia narządowe, wg syllabusu. Kolorowe.",
-     "cena": 79, "link": "https://cardforge.gumroad.com/l/dwbhp"},
-    {"nazwa": "🎁 BUNDLE — CAŁY 2 rok WUM (wszystko)",
-     "opis": "Fizjo + Biochemia + Immuno + Parazyto… ~20 tys. fiszek. Największa oszczędność.",
-     "cena": 199, "link": "https://cardforge.gumroad.com/l/rnrgf"},
+    # `cena` = cena końcowa z VAT 23% (Gumroad dolicza VAT przy kasie do ceny netto produktu).
+    # --- 3 ROK ---
+    {"nazwa": "🎁 Pakiet 3 rok WUM: Patomorfologia + Mikrobiologia",
+     "opis": "~8600 + ~2600 fiszek w jednym pakiecie, taniej niż osobno.",
+     "cena": 197, "link": "https://cardforge.gumroad.com/l/wcmomh"},
+    {"nazwa": "Patomorfologia — WUM 3 rok",
+     "opis": "~8600 fiszek: skrypt WUM (cz. I i II) + Robbins, z patologią wieku dziecięcego. Źródło ze stroną przy każdej fiszce.",
+     "cena": 146, "link": "https://cardforge.gumroad.com/l/ipfytw"},
+    {"nazwa": "Mikrobiologia — WUM 3 rok",
+     "opis": "~2600 fiszek: sylabus 2026/27 (działy 01–20) + pytania z lat ubiegłych.",
+     "cena": 97, "link": "https://cardforge.gumroad.com/l/dwbhp"},
+    # --- 2 ROK ---
+    {"nazwa": "🎁 Pakiet 2 rok WUM: Fizjologia + Biochemia",
+     "opis": "~9700 + ~8200 fiszek w jednym pakiecie, taniej niż osobno.",
+     "cena": 183, "link": "https://cardforge.gumroad.com/l/rnrgf"},
+    {"nazwa": "Fizjologia — WUM 2 rok (kolokwia I–IV)",
+     "opis": "~9700 fiszek na podstawie Konturka i Cudnoch-Jędrzejewskiej, ułożone wg kolokwiów.",
+     "cena": 97, "link": "https://cardforge.gumroad.com/l/jixhif"},
+    {"nazwa": "Biochemia — WUM 2 rok (kolokwia I–III)",
+     "opis": "~8200 fiszek na podstawie Lippincotta, ułożone wg kolokwiów.",
+     "cena": 122, "link": "https://cardforge.gumroad.com/l/atclr"},
 ]
 
 # Podgląd przykładowej karty z trybu WIZJI (mockup: tekst AnKing + prosty diagram SVG).
@@ -226,8 +225,8 @@ TEKSTY = {
         "help_limit": "Wykorzystałeś limit pytań w tej sesji. Odśwież stronę, aby zapytać więcej.",
         "help_error": "Przepraszam, chwilowy problem z asystentem. Spróbuj ponownie za chwilę.",
         "sklep_tytul": "🛒 Gotowe decki WUM (2 i 3 rok)",
-        "sklep_opis": "Gotowe decki pod egzaminy — sprawdzone karty, wszystkie kolokwia, "
-                      "styl AnKing. Nie chcesz robić fiszek sam? Kup gotowy komplet.",
+        "sklep_opis": "Gotowe talie Anki pod kolokwia, ułożone wg tematów. "
+                      "Nie chcesz robić fiszek sam? Kup gotową talię. Ceny z VAT.",
         "sklep_kup": "💳 Kup",
         "sklep_wkrotce": "Wkrótce",
         "footer": f"{MARKA} · fiszki Anki z każdego dokumentu",
@@ -348,8 +347,8 @@ TEKSTY = {
         "help_limit": "You've reached the question limit for this session. Refresh to ask more.",
         "help_error": "Sorry, a temporary problem with the assistant. Please try again shortly.",
         "sklep_tytul": "🛒 Ready-made decks (WUM years 2–3)",
-        "sklep_opis": "Ready decks built for exams — verified cards, all exams, AnKing "
-                      "style. Don't want to make cards yourself? Buy a complete deck.",
+        "sklep_opis": "Ready Anki decks for WUM exams, organised by topic. "
+                      "Don't want to make cards yourself? Buy a ready deck. Prices incl. VAT.",
         "sklep_kup": "💳 Buy",
         "sklep_wkrotce": "Soon",
         "footer": f"{MARKA} · Anki flashcards from any document",
@@ -1127,6 +1126,7 @@ if any(d["link"] for d in SKLEP_DECKI) or not TRYB_PRODUKCJI:
                 f"<span style='color:#8b93a7;font-size:.9rem'>{_d['opis']}</span>",
                 unsafe_allow_html=True)
             _sc2.markdown(f"### {_d['cena']} zł")
+            _sc2.caption("z VAT")
             if _d["link"]:
                 _sc2.link_button(t["sklep_kup"], _d["link"], use_container_width=True)
             else:
