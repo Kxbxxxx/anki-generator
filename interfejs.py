@@ -60,13 +60,13 @@ SKLEP_DECKI = [
      "cena": 97, "link": "https://cardforge.gumroad.com/l/dwbhp"},
     # --- 2 ROK ---
     {"nazwa": "🎁 Pakiet 2 rok WUM: Fizjologia + Biochemia",
-     "opis": "~9700 + ~8200 fiszek w jednym pakiecie, taniej niż osobno.",
+     "opis": "~9000 + ~8500 fiszek w jednym pakiecie, taniej niż osobno.",
      "cena": 183, "link": "https://cardforge.gumroad.com/l/rnrgf"},
     {"nazwa": "Fizjologia — WUM 2 rok (kolokwia I–IV)",
-     "opis": "~9700 fiszek na podstawie Konturka i Cudnoch-Jędrzejewskiej, ułożone wg kolokwiów.",
+     "opis": "~9000 fiszek na podstawie Konturka i Cudnoch-Jędrzejewskiej, ułożone wg kolokwiów.",
      "cena": 97, "link": "https://cardforge.gumroad.com/l/jixhif"},
     {"nazwa": "Biochemia — WUM 2 rok (kolokwia I–III)",
-     "opis": "~8200 fiszek na podstawie Lippincotta, ułożone wg kolokwiów.",
+     "opis": "~8500 fiszek na podstawie Lippincotta, ułożone wg kolokwiów.",
      "cena": 122, "link": "https://cardforge.gumroad.com/l/atclr"},
 ]
 
