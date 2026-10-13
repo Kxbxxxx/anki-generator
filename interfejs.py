@@ -50,23 +50,23 @@ SKLEP_DECKI = [
     # `cena` = cena końcowa z VAT 23% (Gumroad dolicza VAT przy kasie do ceny netto produktu).
     # --- 3 ROK ---
     {"nazwa": "🎁 Pakiet 3 rok WUM: Patomorfologia + Mikrobiologia",
-     "opis": "~8600 + ~2600 fiszek w jednym pakiecie, taniej niż osobno.",
+     "opis": "~8500 + ~2600 fiszek w jednym pakiecie, taniej niż osobno.",
      "cena": 197, "link": "https://cardforge.gumroad.com/l/wcmomh"},
     {"nazwa": "Patomorfologia — WUM 3 rok",
-     "opis": "~8600 fiszek: skrypt WUM (cz. I i II) + Robbins, z patologią wieku dziecięcego. Źródło ze stroną przy każdej fiszce.",
+     "opis": "~8500 fiszek: skrypt WUM (cz. I i II) + Robbins, z patologią wieku dziecięcego. Źródło ze stroną przy każdej fiszce.",
      "cena": 146, "link": "https://cardforge.gumroad.com/l/ipfytw"},
     {"nazwa": "Mikrobiologia — WUM 3 rok",
-     "opis": "~2600 fiszek: sylabus 2026/27 (działy 01–20) + pytania z lat ubiegłych.",
+     "opis": "~2600 fiszek (działy 01–20) + pytania z lat ubiegłych.",
      "cena": 97, "link": "https://cardforge.gumroad.com/l/dwbhp"},
     # --- 2 ROK ---
     {"nazwa": "🎁 Pakiet 2 rok WUM: Fizjologia + Biochemia",
-     "opis": "~9000 + ~8500 fiszek w jednym pakiecie, taniej niż osobno.",
+     "opis": "~5000 + ~5000 fiszek (nowy styl) w jednym pakiecie, taniej niż osobno.",
      "cena": 183, "link": "https://cardforge.gumroad.com/l/rnrgf"},
     {"nazwa": "Fizjologia — WUM 2 rok (kolokwia I–IV)",
-     "opis": "~9000 fiszek na podstawie Konturka i Cudnoch-Jędrzejewskiej, ułożone wg kolokwiów.",
+     "opis": "~5000 fiszek w nowym stylu (1 fakt na fiszkę), ułożone wg kolokwiów I–IV.",
      "cena": 97, "link": "https://cardforge.gumroad.com/l/jixhif"},
     {"nazwa": "Biochemia — WUM 2 rok (kolokwia I–III)",
-     "opis": "~8500 fiszek na podstawie Lippincotta, ułożone wg kolokwiów.",
+     "opis": "~5000 fiszek w nowym stylu (1 fakt na fiszkę), ułożone wg kolokwiów I–III.",
      "cena": 122, "link": "https://cardforge.gumroad.com/l/atclr"},
 ]
 
