@@ -61,13 +61,13 @@ SKLEP_DECKI = [
     # --- 2 ROK ---
     {"nazwa": "🎁 Pakiet 2 rok WUM: Fizjologia + Biochemia",
      "opis": "~5000 + ~5000 fiszek (nowy styl) w jednym pakiecie, taniej niż osobno.",
-     "cena": 183, "link": "https://cardforge.gumroad.com/l/rnrgf"},
+     "cena": 225, "link": "https://cardforge.gumroad.com/l/rnrgf"},
     {"nazwa": "Fizjologia — WUM 2 rok (kolokwia I–IV)",
      "opis": "~5000 fiszek w nowym stylu (1 fakt na fiszkę), ułożone wg kolokwiów I–IV.",
-     "cena": 97, "link": "https://cardforge.gumroad.com/l/jixhif"},
+     "cena": 134, "link": "https://cardforge.gumroad.com/l/jixhif"},
     {"nazwa": "Biochemia — WUM 2 rok (kolokwia I–III)",
      "opis": "~5000 fiszek w nowym stylu (1 fakt na fiszkę), ułożone wg kolokwiów I–III.",
-     "cena": 122, "link": "https://cardforge.gumroad.com/l/atclr"},
+     "cena": 134, "link": "https://cardforge.gumroad.com/l/atclr"},
 ]
 
 # Podgląd przykładowej karty z trybu WIZJI (mockup: tekst AnKing + prosty diagram SVG).
