@@ -50,13 +50,13 @@ SKLEP_DECKI = [
     # `cena` = cena końcowa z VAT 23% (Gumroad dolicza VAT przy kasie do ceny netto produktu).
     # --- 3 ROK ---
     {"nazwa": "🎁 Pakiet 3 rok WUM: Patomorfologia + Mikrobiologia",
-     "opis": "~8500 + ~2950 fiszek w jednym pakiecie, taniej niż osobno.",
+     "opis": "~8400 + ~3200 fiszek w jednym pakiecie, taniej niż osobno.",
      "cena": 157, "link": "https://cardforge.gumroad.com/l/wcmomh"},
     {"nazwa": "Patomorfologia — WUM 3 rok",
-     "opis": "~8500 fiszek: skrypt WUM (cz. I i II) + Robbins, z patologią wieku dziecięcego. Źródło ze stroną przy każdej fiszce.",
+     "opis": "~8400 fiszek: skrypt WUM (cz. I i II) + Robbins, z patologią wieku dziecięcego. Źródło ze stroną przy każdej fiszce.",
      "cena": 117, "link": "https://cardforge.gumroad.com/l/ipfytw"},
     {"nazwa": "Mikrobiologia — WUM 3 rok",
-     "opis": "~2950 fiszek (działy 01–20, zgodne ze slajdami Zakładu 2026/27) + pytania z lat ubiegłych.",
+     "opis": "~3200 fiszek (działy 01–20, zgodne ze slajdami Zakładu 2026/27) + pytania z lat ubiegłych.",
      "cena": 77, "link": "https://cardforge.gumroad.com/l/dwbhp"},
     # --- 2 ROK ---
     {"nazwa": "🎁 Pakiet 2 rok WUM: Fizjologia + Biochemia",
